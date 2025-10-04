@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/ulogo.png" alt="logo" width="80" />
+</p>
+
 # UGround: Towards Unified Visual Grounding with Unrolled Transformers
 
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)  [![arXiv](https://img.shields.io/badge/arXiv-2311.16090-red)](https://arxiv.org/abs/2412.17741) 
