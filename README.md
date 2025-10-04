@@ -65,7 +65,7 @@ For ease of installation, we have encapsulated the setup steps into a script, [*
 
 ## Model and Dataset Preparation
 
-Currently, we support 8 datasets, namely:
+Currently, we support 8 dataset types, namely:
 A: **sem_seg**, B: **refer_seg**, C: **neg_refer_seg**, D: **correct_refer_seg**, E: **vqa**, F: **reason_seg**, G: **reason_seg_plus**, and H: **multi_reason_seg**. Please Visit [UGround dataset page](./dataloaders/README.md) for more details.
 
 A: **sem_seg**: ade20k||cocostuff||pascal_part||paco_lvis||mapillary
