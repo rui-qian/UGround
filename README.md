@@ -4,7 +4,7 @@
 
 This repo provides the PyTorch source code of our paper: [UGround: Towards Unified Visual Grounding with Unrolled Transformers](https://arxiv.org/abs/2412.17741).
 
-It is also the official code release of [`[READ]`](https://arxiv.org/abs/2412.17741).
+It is also the official code release of [\[READ\]](https://github.com/rui-qian/READ), see also: [\[arXiv\]](https://arxiv.org/abs/2412.17741).
 
 **Authors**: 
 [Rui Qian](https://scholar.google.com.hk/citations?user=z3sAW3oAAAAJ&hl=zh-CN), 
@@ -155,4 +155,4 @@ If you use our work or our implementation in this repo, or find them helpful, pl
 }
 ```
 ## Contact
-If you have any questions, feel free to reach out at qianruii@126.com, xyin@zju.edu.cn, dengch2000@gmail.com, and dejingdou@gmail.com.
+If you have any questions, feel free to reach out at qianruii@126.com, xyin@zju.edu.cn, dengch2000@gmail.com, pzy2000@sjtu.edu.cn, jianxxiong@gmail.com, zhaiwei682@gmail.com and dejingdou@gmail.com.
