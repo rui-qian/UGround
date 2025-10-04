@@ -147,9 +147,9 @@ We are grateful for the foundational code provided by [PixelLM](https://github.c
 
 If you use our work or our implementation in this repo, or find them helpful, please consider giving a citation.
 ```
-@inproceedings{qian2024reasoning,
+@inproceedings{qian2024UGround,
   title={UGround: Towards Unified Visual Grounding with Unrolled Transformers},
-  author={Qian Rui and Yin Xin and Deng Chuanhang and Peng Zhiyuan and Xiong Jian and Zhai Wei and Dou Dejing},
+  author={Qian, Rui and Yin, Xin and Deng, Chuanhang and Peng, Zhiyuan and Xiong, Jian and Zhai, Wei and Dou, Dejing},
   booktitle={arXiv},
   year={2025}
 }
