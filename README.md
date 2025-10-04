@@ -4,7 +4,7 @@
 
 This repo provides the PyTorch source code of our paper: [UGround: Towards Unified Visual Grounding with Unrolled Transformers](https://arxiv.org/abs/2412.17741).
 
-It is also the official code release of [\[READ\]](https://github.com/rui-qian/READ), see also: [\[arXiv\]](https://arxiv.org/abs/2412.17741).
+It is also the official code release of [\[READ\]](https://github.com/rui-qian/READ), [CVPR'25](https://openaccess.thecvf.com/content/CVPR2025/papers/Qian_Reasoning_to_Attend_Try_to_Understand_How_SEG_Token_Works_CVPR_2025_paper.pdf), see also: [\[arXiv\]](https://arxiv.org/abs/2412.17741).
 
 **Authors**: 
 [Rui Qian](https://scholar.google.com.hk/citations?user=z3sAW3oAAAAJ&hl=zh-CN), 
