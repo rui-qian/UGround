@@ -450,7 +450,7 @@ def main():
 }
     """
 
-    with gr.Blocks(css=css, title="UGround: Towards Unified Visual Grounding with Large Multimodal Models") as demo:
+    with gr.Blocks(css=css, title="UGround: Towards Unified Visual Grounding with Unrolled Transformers") as demo:
         with gr.Row(elem_id="logo-title-row"):
             # gr.HTML('''
             # <div style="display: flex; align-items: center; justify-content: center; width: 100%;">
@@ -460,7 +460,7 @@ def main():
             # ''')
             gr.HTML(f'''
             <div style="display: flex; align-items: center; justify-content: center; width: 100%;">
-                <h2 style="margin: 0;">UGround: Towards Unified Visual Grounding with Large Multimodal Models - {args.model_key.upper()}</h2>
+                <h2 style="margin: 0;">UGround: Towards Unified Visual Grounding with Unrolled Transformers - {args.model_key.upper()}</h2>
             </div>
             ''')
  

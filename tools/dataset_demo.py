@@ -1118,7 +1118,7 @@ def create_web_demo(args=None):
         
         gr.HTML("""
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1>🔍 UGround: Towards Unified Visual Grounding with Large Multimodal Models</h1>
+            <h1>🔍 UGround: Towards Unified Visual Grounding with Unrolled Transformers</h1>
         </div>
         """)
 

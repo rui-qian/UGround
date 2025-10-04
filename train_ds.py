@@ -33,7 +33,7 @@ from dataloaders.multi_reason_seg_val_dataset import MultiReasonSegValDataset
 from dataloaders.utils import TrainingLogger, SystemOutputRedirector, set_random_seed, MetaLogRotator, remove_epoch_ckpt
 
 def parse_args(args):
-    parser = argparse.ArgumentParser(description="UGround: Towards Unified Visual Grounding with Large Multimodal Models")
+    parser = argparse.ArgumentParser(description="UGround: Towards Unified Visual Grounding with Unrolled Transformers")
     parser.add_argument("--local_rank", default=0, type=int, help="node rank")
     parser.add_argument("--model_key", default=DEFAULT_MODEL_KEY, type=str, 
                         help=f"Model key to use. Available models: {list(get_available_models().keys())}")

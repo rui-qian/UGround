@@ -13,7 +13,7 @@ import queue
 import math
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="UGround: Towards Unified Visual Grounding with Large Multimodal Models")
+    parser = argparse.ArgumentParser(description="UGround: Towards Unified Visual Grounding with Unrolled Transformers")
     parser.add_argument("--dataset_dir", default="../dataset_sesame/reason_seg/ReasonSeg/test", type=str, help="Directory containing original sample images")
     parser.add_argument("--layers_output", default="./uground-7B@reason_seg_test", type=str, help="Directory containing layer outputs (layer0, layer1, etc.)")
     parser.add_argument("--samples_dir", default="./vis_output", type=str, help="Directory for cache and sample files")

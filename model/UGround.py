@@ -1,5 +1,5 @@
 # @inproceedings{qian2024uground,
-#   title={UGround: Towards Unified Visual Grounding with Large Multimodal Models},
+#   title={UGround: Towards Unified Visual Grounding with Unrolled Transformers},
 #   author={Qian, Rui and Yin, Xin and Dou, Dejing},
 #   booktitle={arXiv preprint arXiv:xxxx},
 #   year={2025}

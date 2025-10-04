@@ -18,7 +18,7 @@ from dataloaders.utils import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
 from transformers import TextStreamer
 
 def parse_args(args):
-    parser = argparse.ArgumentParser(description="UGround: Towards Unified Visual Grounding with Large Multimodal Models")
+    parser = argparse.ArgumentParser(description="UGround: Towards Unified Visual Grounding with Unrolled Transformers")
     parser.add_argument("--version", default="xinlai/PixelLM-13B-llama2-v1")
     parser.add_argument("--model_key", default=DEFAULT_MODEL_KEY, type=str,
                         help="Model key to use for chat")
