@@ -14,8 +14,8 @@ This repo provides the PyTorch source code of our paper: [UGround: Towards Unifi
 [Dejing Dou†](https://scholar.google.com.hk/citations?hl=zh-CN&user=qBHsQ04AAAAJ). 
 
 ## Abstract
-We present UGround, a **U**nified visual \textbf{Ground}ing paradigm that dynamically selects 
-intermediate layers across \textbf{U}nrolled transformers as ''mask as prompt'', diverging from the 
+We present UGround, a **U**nified visual **Ground**ing paradigm that dynamically selects 
+intermediate layers across **U**nrolled transformers as ''mask as prompt'', diverging from the 
 prevailing pipeline that leverages the fixed last hidden layer as ''\<SEG\> as prompt''. UGround addresses two primary challenges posed by the prevailing paradigm: (1) its reliance on the fixed last hidden layer, which sequentially amplifies cumulative errors arising from layer-by-layer propagation without intermediate correction, and (2) its use of \<SEG\> as a prompt, which implicitly projects textual embeddings into visual space without explicit spatial cues (e.g., coordinates). Central to UGround is Policy-Prompted Masking, which comprises two key components: Stochastic Skip Connection (SSC) and Mask as Prompt (MasP). SSC is a reinforcement learning policy that, via stochastic sampling, allows each \<SEG\> token to slide across unrolled transformer layers, enabling dynamic layer selection at which it connects to the 
 vision model (e.g., SAM) in a skip-connection fashion. Given the selected hidden layer, MasP uses the similarity map derived from the \<SEG\> token and image tokens as a soft logit 
 mask to prompt SAM for mask generation, offering explicit spatial cues through its 
@@ -25,4 +25,5 @@ traditional refer expression segmentation to newly proposed reasoning segmentati
 single-target to multi-target, positive query to false premise (empty target). 
 All codes and models are publicly available at https://github.com/rui-qian/UGround.
 
-TBD
+<p align="center"> <img src="assets/overview.png" width="100%"> </p>
+<p align="center"> <img src="assets/introduction.png" width="100%"> </p>
