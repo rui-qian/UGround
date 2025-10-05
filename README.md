@@ -63,6 +63,12 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 
 For ease of installation, we have encapsulated the setup steps into a script, [*build.sh*](./build.sh). You can complete the environment configuration within 5 minutes.
 
+```bash=
+chmod +x install.sh
+./install.sh
+```
+
+
 ## Model and Dataset Preparation
 
 Currently, we support 8 dataset types, namely:
@@ -147,13 +153,13 @@ We are grateful for the foundational code provided by [PixelLM](https://github.c
 
 If you use our work or our implementation in this repo, or find them helpful, please consider giving a citation.
 ```
-@inproceedings{qian2024UGround,
+@inproceedings{qian2025UGround,
   title={UGround: Towards Unified Visual Grounding with Unrolled Transformers},
   author={Qian, Rui and Yin, Xin and Deng, Chuanhang and Peng, Zhiyuan and Xiong, Jian and Zhai, Wei and Dou, Dejing},
   booktitle={arXiv},
   year={2025}
 }
-@inproceedings{qian2024reasoning,
+@inproceedings{qian2025reasoning,
   title={Reasoning to Attend: Try to Understand How< SEG> Token Works},
   author={Qian, Rui and Yin, Xin and Dou, Dejing},
   booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
