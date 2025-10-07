@@ -55,7 +55,7 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 # 2. bash Anaconda3-2025.06-0-Linux-x86_64.sh
 # 3. conda create -n uground python=3.9
 # 4. conda activate uground
-# 5. chmod +x build.sh    #Credit: Chuanhang Deng
+# 5. chmod +x build.sh 
 # 6. ./build.sh
 # 7. wget https://github.com/Dao-AILab/flash-attention/releases/download/v2.6.3/flash_attn-2.6.3+cu118torch2.0cxx11abiFALSE-cp39-cp39-linux_x86_64.whl
 # 8. pip install flash_attn-2.6.3+cu118torch2.0cxx11abiFALSE-cp39-cp39-linux_x86_64.whl
