@@ -59,15 +59,11 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 # 6. ./build.sh
 # 7. wget https://github.com/Dao-AILab/flash-attention/releases/download/v2.6.3/flash_attn-2.6.3+cu118torch2.0cxx11abiFALSE-cp39-cp39-linux_x86_64.whl
 # 8. pip install flash_attn-2.6.3+cu118torch2.0cxx11abiFALSE-cp39-cp39-linux_x86_64.whl
+# 9. chmod +x install.sh
+#10. ./install.sh
 ```
 
 For ease of installation, we have encapsulated the setup steps into a script, [*build.sh*](./build.sh). You can complete the environment configuration within 5 minutes.
-
-```bash=
-chmod +x install.sh
-./install.sh
-```
-
 
 ## Model and Dataset Preparation
 
