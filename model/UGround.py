@@ -1,7 +1,7 @@
 # @inproceedings{qian2024uground,
 #   title={UGround: Towards Unified Visual Grounding with Unrolled Transformers},
 #   author={Qian, Rui and Yin, Xin and Dou, Dejing},
-#   booktitle={arXiv preprint arXiv:xxxx},
+#   booktitle={arXiv},
 #   year={2025}
 # }
 

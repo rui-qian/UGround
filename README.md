@@ -4,9 +4,9 @@
 
 # UGround: Towards Unified Visual Grounding with Unrolled Transformers
 
-[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)  [![arXiv](https://img.shields.io/badge/arXiv-2311.16090-red)](https://arxiv.org/abs/2412.17741) 
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)  [![arXiv](https://img.shields.io/badge/arXiv-2311.16090-red)](http://arxiv.org/abs/2510.03853) 
 
-This repo provides the PyTorch source code of our paper: [UGround: Towards Unified Visual Grounding with Unrolled Transformers](https://arxiv.org/abs/2412.17741).
+This repo provides the PyTorch source code of our paper: [UGround: Towards Unified Visual Grounding with Unrolled Transformers](http://arxiv.org/abs/2510.03853).
 
 It is also the official code release of [\[READ\]](https://github.com/rui-qian/READ), [CVPR'25](https://openaccess.thecvf.com/content/CVPR2025/papers/Qian_Reasoning_to_Attend_Try_to_Understand_How_SEG_Token_Works_CVPR_2025_paper.pdf), see also: [\[arXiv\]](https://arxiv.org/abs/2412.17741).
 
