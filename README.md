@@ -39,7 +39,7 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 
 ### Currently Supported Features
 
-- [x] Support framework decoupling (框架分离)
+- [x] Support framework decoupling (框架分离: LISA, PixelLM, GSVA, READ, SESAME)
 - [x] Support file tracking (文件追踪)
 - [x] [Support full logging (全量日志)](./assets/logging.png)
 - [x] [Support resuming training from checkpoints. (断点续训)](./assets/resume.png)
