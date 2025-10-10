@@ -41,11 +41,11 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 
 - [x] Support framework decoupling (框架分离: LISA, PixelLM, GSVA, READ, SESAME)
 - [x] Support file tracking (文件追踪)
-- [x] [Support full logging (全量日志)](./assets/logging.png)
-- [x] [Support resuming training from checkpoints. (断点续训)](./assets/resume.png)
+- [x] [Support full logging (全量日志)](#full-logging)
+- [x] [Support resuming training from checkpoints. (断点续训)](#training-visualization)
 - [x] Support distributed training (分布式训练)
 - [x] Support multi-dataset training and evaluation (多数据集训练评估)
-- [x] Support rich visualization, e.g., [data visualization](./assets/data_visualization.png) and [training visualization](./assets/training_visualization.png) 可视化丰富(数据可视化，训练可视化)
+- [x] Support rich visualization, e.g., [data visualization](#data-visualization) and [training visualization](#training-visualization) 可视化丰富(数据可视化，训练可视化)
 
 ## Installation Guide
 
@@ -136,17 +136,17 @@ Results on gReferSeg
 <p align="left"> <img src="assets/inference.png" width="70%"> </p>
 
 ## Supported Features
-- #### Full Logging
+- #### <a id="full-logging"></a> Full Logging
 <p align="left"> <img src="assets/logging.png" width="70%"> </p>
 
-- #### Data Visualization
+- #### <a id="data-visualization"></a> Data Visualization
 <p align="left"> <img src="assets/data_visualization.png" width="70%"> </p>
 
 ```bash= #
 ./scripts/7b_reason_seg_val/dataset_demo.sh    # Data Visualization Dashboard
 ```
 
-- #### Training Visualization
+- #### <a id="training-visualization"></a> Training Visualization
 <p align="left"> <img src="assets/resume.png" width="70%"> </p>
 <p align="left"> <img src="assets/training_visualization.png" width="70%"> </p>
 
