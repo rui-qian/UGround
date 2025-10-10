@@ -34,7 +34,7 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 <p align="center"> <img src="assets/introduction.png" width="100%"> </p>
 
 ## News
-- [x] [2025.10.4] Inference code and the [UGround-LLaVA-v1.5-7B](https://huggingface.co/rui-qian/xxx) model are coming. Welcome to check them out!
+- [x] [2025.10.4] Inference code and the [UGround-LLaVA-v1.5-7B/13B](https://huggingface.co/rui-qian/) model are released. Welcome to check them out!
 - [x] [2025.10.3] [Paper](http://arxiv.org/abs/2510.03853) is released and GitHub repo is created.
 
 ### Currently Supported Features
