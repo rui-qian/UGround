@@ -86,9 +86,22 @@ G: **reason_seg_plus**(LISA++): [instance_seg||cot||conversations||caption](http
 
 H: **multi_reason_seg**(muse): [MultiReasonSeg|train](https://github.com/MaverickRen/PixelLM)
 
-| Model Name | HG-ckpt URL | 
-|----------------------------|----------------|
-| UGround-LLaVA-v1.5-7B  | In progress |  
+| Model Name | gIoU      cIoU | Snapshot | HG-ckpt URL
+|----------------------------|----------------|----------------|----------------|
+Results on ReasonSeg
+| [UGround-LLaVA-v1.5-7B_ema/val](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_val_llava1.5_ema/tree/main)  |64.17 71.08 |  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_val_llava1.5_ema/blob/main/ReasonSeg_val_7b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_val_llava1.5_ema/tree/main)
+| [UGround-LLaVA-v1.5-7B_ema/test](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5_ema/tree/main)  |63.36 66.09 |  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5_ema/blob/main/ReasonSeg_test_7b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5_ema/tree/main)
+| [UGround-LLaVA-v1.5-13B_ema/val](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_val_llava1.5_ema/tree/main)  |67.89 74.92 |  [archive](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_val_llava1.5_ema/blob/main/ReasonSeg_val_13b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_val_llava1.5_ema/tree/main)
+| [UGround-LLaVA-v1.5-13B_ema/test](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5_ema/tree/main)  |65.50 65.86 |  [archive](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5_ema/blob/main/ReasonSeg_test_13b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5_ema/tree/main)
+| [UGround-LLaVA-v1.5-7B/val](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/tree/main)  |66.13 72.07 |  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/blob/main/reasonseg_val.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/tree/main) 
+| [UGround-LLaVA-v1.5-7B/test](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5/tree/main)  |63.55 65.44|  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5/blob/main/ReasonSeg_test_7b.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5/tree/main) 
+| UGround-LLaVA-v1.5-13B/val|- -|  archive| weights
+| [UGround-LLaVA-v1.5-13B/test](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5/tree/main)  |65.03 65.47|  [archive](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5/blob/main/ReasonSeg_test_13b.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5/tree/main)
+Results on ReferSeg
+| [UGround-LLaVA-v1.5-7B](https://huggingface.co/rui-qian/hf-UGround-7b_refer_seg_llava1.5/tree/main)  |80.63 83.53|  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_refer_seg_llava1.5/blob/main/refer_seg-7B.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_refer_seg_llava1.5/tree/main)  
+Results on gReferSeg
+| [UGround-LLaVA-v1.5-7B](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main)  |74.49 66.38 |  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/blob/main/gres_7b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main) 
+| [UGround-LLaVA-v1.5-7B](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main)  |72.46 65.56 |  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/blob/main/gref.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main) 
 
 ## Experimental results 
 
