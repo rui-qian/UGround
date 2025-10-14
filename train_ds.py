@@ -189,7 +189,7 @@ def main(args):
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
            
-        redirector = SystemOutputRedirector(log_filename)
+        redirector = SystemOutputRedirector(log_filename, debug=True)
         redirector.start_redirection()
         
         # Initialize training logger
