@@ -1180,7 +1180,7 @@ def create_web_demo(args=None):
                                     info="Visual question answering datasets"
                                 )
                                 reason_seg_dropdown = gr.Dropdown(
-                                    choices=["ReasonSeg|train"],
+                                    choices=["ReasonSeg|train", "ReasonSeg|val", "ReasonSeg|test"],
                                     label="reason_seg Datasets",
                                     multiselect=True,
                                     value=[],
@@ -1194,7 +1194,7 @@ def create_web_demo(args=None):
                                     info="Reasoning segmentation datasets"
                                 )
                                 multi_reason_seg_dropdown = gr.Dropdown(
-                                    choices=["MultiReasonSeg|train"],
+                                    choices=["MultiReasonSeg|train", "MultiReasonSeg|val", "MultiReasonSeg|test_many", "MultiReasonSeg|test_less"],
                                     label="multi_reason_seg Datasets",
                                     multiselect=True,
                                     value=[],
@@ -1416,9 +1416,9 @@ def create_web_demo(args=None):
             - **C (neg_refer_seg)**: Negative referring segmentation datasets
             - **D (correct_refer_seg)**: Corrected referring segmentation datasets
             - **E (vqa)**: llava_instruct_150k
-            - **F (reason_seg)**: ReasonSeg|train
+            - **F (reason_seg)**: ReasonSeg|train, ReasonSeg|val, ReasonSeg|test
             - **G (reason_seg_plus)**: ReasonSegPlus datasets
-            - **H (multi_reason_seg)**: MultiReasonSeg|train
+            - **H (multi_reason_seg)**: MultiReasonSeg|train, MultiReasonSeg|val, MultiReasonSeg|test_many, MultiReasonSeg|test_less
             """)
     
     return demo
