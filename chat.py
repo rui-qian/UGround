@@ -87,12 +87,14 @@ def build_model(args):
     )
     tokenizer.pad_token = tokenizer.unk_token
     if args.seg_token_num * args.image_feature_scale_num == 1:
-        num_added_tokens = tokenizer.add_tokens("[SEG]")
+        tokenizer.add_tokens("[SEG]")
         args.seg_token_idx = tokenizer("[SEG]", add_special_tokens=False).input_ids[0]
+        args.rej_token_idx = tokenizer("[REJ]", add_special_tokens=False).input_ids[0]
     else:
         new_tokens = ["[SEG{}]".format(i) for i in range(args.seg_token_num * args.image_feature_scale_num)]
-        num_added_tokens = tokenizer.add_tokens(new_tokens)
-        args.seg_token_idx = [tokenizer(token, add_special_tokens=False).input_ids[0] for token in new_tokens]
+        tokenizer.add_tokens(new_tokens)
+        args.seg_token_idx = [tokenizer(t, add_special_tokens=False).input_ids[0] for t in new_tokens]
+        args.rej_token_idx = [tokenizer(t, add_special_tokens=False).input_ids[0] for t in new_tokens]
 
     torch_dtype = torch.float32
     if args.precision == "bf16":
@@ -109,6 +111,7 @@ def build_model(args):
         "resize_vision_tower_size": args.resize_vision_tower_size,
         "vision_tower_for_mask": args.vision_tower_for_mask,
         "separate_mm_projector": args.separate_mm_projector,
+        "rej_token_idx": args.rej_token_idx,
     }
     
     if args.load_in_4bit:

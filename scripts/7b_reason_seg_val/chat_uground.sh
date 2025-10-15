@@ -1,7 +1,7 @@
 export CUDA_VISIBLE_DEVICES=7
 
 python3 chat.py \
-    --version="runs/UGround-7b_reason_seg_val/hf-UGround-7b_reason_seg_val" \
+    --version="runs/UGround-7b_reason_seg_val_llava1.5_ema/hf-UGround-7b_reason_seg_val_llava1.5_ema" \
 	--model_key="UGround" \
 	--precision='bf16' \
 	--seg_token_num=1  \
