@@ -44,7 +44,7 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 - [x] [Support full logging (全量日志)](#full-logging)
 - [x] [Support resuming training from checkpoints. (断点续训)](#training-visualization)
 - [x] Support distributed training (分布式训练)
-- [x] Support multi-dataset training and evaluation (多数据集训练评估)
+- [x] [Support multi-dataset training and evaluation (多数据集训练评估)](#multi-dataset-evaluation)
 - [x] Support rich visualization, e.g., [data visualization](#data-visualization) and [training visualization](#training-visualization) 可视化丰富(数据可视化，训练可视化)
 
 ## Installation Guide
@@ -137,7 +137,11 @@ Results on gReferSeg
 
 ## Supported Features
 - #### <a id="full-logging"></a> Full Logging
-<p align="left"> <img src="assets/logging.png" width="70%"> </p>
+<p align="left"> <img src="assets/full-logging-1.png" width="70%"> </p>
+<p align="left"> <img src="assets/full-logging-2.png" width="70%"> </p>
+
+- #### <a id="multi-dataset-evaluation"></a> Multi-dataset Evaluation
+<p align="left"> <img src="assets/evaluation.png" width="70%"> </p>
 
 - #### <a id="data-visualization"></a> Data Visualization
 <p align="left"> <img src="assets/data_visualization.png" width="70%"> </p>
