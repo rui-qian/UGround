@@ -84,9 +84,6 @@ def inference(args):
         "num_layers": args.num_layers,
         "strategy": args.strategy,
         "mode": args.mode,
-        "temperature": args.temperature,
-        "hard": args.hard,
-        "num_heads": args.num_heads,
         "eval_legacy": args.eval_legacy,
     }
 

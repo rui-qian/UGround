@@ -13,7 +13,7 @@ function run_inference() {
         --local_rank=0 \
         --process_num="${PROCESS_NUM}" \
         --world_size="${WORLD_SIZE}" \
-        --dataset_dir ../dataset_sesame \
+        --dataset_dir="../dataset_sesame" \
 	    --version="runs/UGround-7b_reason_seg_val_llava1.5/hf-UGround-7b_reason_seg_val_llava1.5" \
         --vision_tower="../dataset_sesame/clip-vit-large-patch14-336" \
         --separate_mm_projector \
@@ -26,11 +26,8 @@ function run_inference() {
         --val_dataset="${DATASET}" \
         --vis_save_path="./inference_results/${DATASET}_inference_cvpr" \
         --num_layers=33 \
-        --strategy="random_walker" \
+        --strategy="policy_walker" \
         --mode=0 \
-        --temperature=1.0 \
-        --hard \
-        --num_heads=3 \
         --eval_legacy 
 }
 

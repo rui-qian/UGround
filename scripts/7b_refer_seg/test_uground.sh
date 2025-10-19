@@ -26,11 +26,8 @@ function run_inference() {
         --val_dataset="${DATASET}" \
         --vis_save_path="./inference_results/${DATASET}_inference_cvpr" \
         --num_layers=33 \
-        --strategy="random_walker" \
+        --strategy="policy_walker" \
         --mode=0 \
-        --temperature=1.0 \
-        --hard \
-        --num_heads=3 \
         --eval_legacy 
 }
 
