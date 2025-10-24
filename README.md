@@ -102,8 +102,8 @@ Results on ReasonSeg
 Results on ReferSeg
 | [UGround-LLaVA-v1.5-7B(refcocog/val)](https://huggingface.co/rui-qian/hf-UGround-7b_refer_seg_llava1.5/tree/main)  |76.52 74.73|  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_refer_seg_llava1.5/blob/main/refer_seg-7B.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_refer_seg_llava1.5/tree/main)  
 Results on gReferSeg
-| [UGround-LLaVA-v1.5-7B](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main)  |74.49 66.38 |  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/blob/main/gres_7b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main) 
-| [UGround-LLaVA-v1.5-7B](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main)  |72.46 65.56 |  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/blob/main/gref.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main) 
+| [UGround-LLaVA-v1.5-7B](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main)  |74.49 66.38 |  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/blob/main/gres_7b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/raw/main/meta_3.log)
+| [UGround-LLaVA-v1.5-7B](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main)  |72.46 65.56 |  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/blob/main/gref.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/raw/main/meta_7.log)
 
 ## Experimental results 
 
