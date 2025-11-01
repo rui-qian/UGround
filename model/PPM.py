@@ -3,6 +3,7 @@ from sympy import im
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.distributed as dist
 from model.llava.constants import IMAGE_TOKEN_INDEX
 
 class PolicyPromptedMasking(nn.Module):
@@ -157,25 +158,131 @@ class PolicyPromptedMasking(nn.Module):
         seg_token_embeds_for_sam = seg_token_embeds_for_similarity
         return seg_token_embeds_for_similarity, seg_image_token_embeds_for_similarity, seg_token_embeds_for_sam
 
-    def policy_forward(self, reward: torch.Tensor, ema_decay: float = 0.9) -> torch.Tensor:
+    def policy_forward(self, reward: torch.Tensor, ema_decay: float = 0.9, world_size: int = 1, rank: int = 0) -> torch.Tensor:
         """Compute REINFORCE policy loss using stored log-probs and a baseline (EMA or Critic).
-        reward: scalar tensor. Returns a scalar loss tensor or None if no log_probs.
+        Supports distributed training by gathering log_probs and rewards across all ranks.
+        
+        Args:
+            reward: scalar tensor reward for current rank
+            ema_decay: EMA decay factor for baseline
+            world_size: number of GPUs in distributed training
+            rank: current GPU rank
+            
+        Returns:
+            scalar loss tensor or 0 if no log_probs
         """
+        # Handle case with no log_probs on current rank
         if self.log_probs is None or self.log_probs.numel() == 0:
-            return 0
-        r = reward.detach().mean()
-        if self.baseline_type == 'critic' and self.last_layer_probs_mean is not None:
-            # Critic baseline (scalar); detach baseline for policy gradient
-            baseline = self.critic(self.last_layer_probs_mean.unsqueeze(0)).squeeze(0).squeeze(-1)
-            adv = (r - baseline.detach()).to(self.log_probs.dtype)
-            policy_loss = -(adv * self.log_probs).mean()
-            critic_loss = (baseline - r).pow(2)
-            return policy_loss + self.baseline_beta * critic_loss
+            local_log_probs = torch.zeros(0, dtype=torch.float32, device=reward.device)
+            local_reward = torch.tensor(0.0, dtype=torch.float32, device=reward.device)
+            local_count = torch.tensor(0, dtype=torch.long, device=reward.device)
         else:
-            # EMA baseline (scalar)
+            local_log_probs = self.log_probs.detach().to(torch.float32)
+            local_reward = reward.detach().mean().to(torch.float32)
+            local_count = torch.tensor(self.log_probs.numel(), dtype=torch.long, device=reward.device)
+        
+        # For single GPU training, use original logic
+        if world_size <= 1 or not dist.is_initialized():
+            if local_count.item() == 0:
+                return 0
+            r = local_reward
+            if self.baseline_type == 'critic' and self.last_layer_probs_mean is not None:
+                baseline = self.critic(self.last_layer_probs_mean.unsqueeze(0)).squeeze(0).squeeze(-1)
+                adv = (r - baseline.detach()).to(self.log_probs.dtype)
+                policy_loss = -(adv * self.log_probs).mean()
+                critic_loss = (baseline - r).pow(2)
+                return policy_loss + self.baseline_beta * critic_loss
+            else:
+                rm = self.reward_running_mean
+                rm = ema_decay * rm + (1.0 - ema_decay) * float(r.item())
+                self.reward_running_mean = rm
+                adv = (r - rm)
+                adv = adv.to(dtype=self.log_probs.dtype, device=self.log_probs.device)
+                return -(adv.detach() * self.log_probs).mean()
+        
+        # === Distributed Training Logic ===
+        # Step 1: Gather counts from all ranks to determine max length
+        count_list = [torch.zeros(1, dtype=torch.long, device=reward.device) for _ in range(world_size)]
+        dist.all_gather(count_list, local_count.unsqueeze(0))
+        count_list = [c.item() for c in count_list]
+        max_count = max(count_list)
+        total_count = sum(count_list)
+        
+        # If no rank has any log_probs, return 0 on all ranks
+        if total_count == 0:
+            return torch.tensor(0.0, dtype=torch.float32, device=reward.device, requires_grad=True) * 0.0
+        
+        # Step 2: Pad local_log_probs to max_count
+        if local_count.item() < max_count:
+            padding = torch.zeros(max_count - local_count.item(), dtype=torch.float32, device=reward.device)
+            padded_log_probs = torch.cat([local_log_probs, padding], dim=0)
+        else:
+            padded_log_probs = local_log_probs
+        
+        # Step 3: Gather log_probs from all ranks
+        gathered_log_probs_list = [torch.zeros(max_count, dtype=torch.float32, device=reward.device) for _ in range(world_size)]
+        dist.all_gather(gathered_log_probs_list, padded_log_probs)
+        
+        # Step 4: Gather rewards from all ranks
+        reward_list = [torch.zeros(1, dtype=torch.float32, device=reward.device) for _ in range(world_size)]
+        dist.all_gather(reward_list, local_reward.unsqueeze(0))
+        
+        # Step 5: Compute global statistics
+        # Unpack valid log_probs (remove padding)
+        all_log_probs = []
+        all_rewards = []
+        for i in range(world_size):
+            if count_list[i] > 0:
+                all_log_probs.append(gathered_log_probs_list[i][:count_list[i]])
+                all_rewards.append(reward_list[i].expand(count_list[i]))
+        
+        if len(all_log_probs) == 0:
+            return torch.tensor(0.0, dtype=torch.float32, device=reward.device, requires_grad=True) * 0.0
+        
+        all_log_probs = torch.cat(all_log_probs, dim=0)  # [total_count]
+        all_rewards = torch.cat(all_rewards, dim=0)  # [total_count]
+        
+        # Step 6: Compute global mean reward for baseline
+        global_mean_reward = all_rewards.mean()
+        
+        # Step 7: Compute policy loss (on all ranks for gradient sync)
+        if self.baseline_type == 'critic' and self.last_layer_probs_mean is not None:
+            # Use critic baseline - gather layer_probs_mean from all ranks
+            if self.last_layer_probs_mean is not None:
+                local_layer_probs = self.last_layer_probs_mean.unsqueeze(0)  # [1, L]
+            else:
+                local_layer_probs = torch.zeros(1, self.num_layers, dtype=torch.float32, device=reward.device)
+            
+            # Gather all layer probs
+            gathered_layer_probs = [torch.zeros_like(local_layer_probs) for _ in range(world_size)]
+            dist.all_gather(gathered_layer_probs, local_layer_probs)
+            
+            # Average across ranks that have valid data
+            valid_layer_probs = []
+            for i in range(world_size):
+                if count_list[i] > 0:
+                    valid_layer_probs.append(gathered_layer_probs[i])
+            
+            if len(valid_layer_probs) > 0:
+                mean_layer_probs = torch.stack(valid_layer_probs, dim=0).mean(dim=0)  # [1, L]
+                baseline = self.critic(mean_layer_probs).squeeze(0).squeeze(-1)
+            else:
+                baseline = torch.tensor(0.0, dtype=torch.float32, device=reward.device)
+            
+            adv = (all_rewards - baseline.detach()).to(all_log_probs.dtype)
+            policy_loss = -(adv * all_log_probs).mean()
+            critic_loss = (baseline - global_mean_reward).pow(2)
+            total_loss = policy_loss + self.baseline_beta * critic_loss
+        else:
+            # EMA baseline
             rm = self.reward_running_mean
-            rm = ema_decay * rm + (1.0 - ema_decay) * float(r.item())
+            rm = ema_decay * rm + (1.0 - ema_decay) * float(global_mean_reward.item())
             self.reward_running_mean = rm
-            adv = (r - rm)
-            adv = adv.to(dtype=self.log_probs.dtype, device=self.log_probs.device)
-            return -(adv.detach() * self.log_probs).mean()
+            adv = (all_rewards - rm)
+            total_loss = -(adv * all_log_probs).mean()
+        
+        # Ensure the loss requires grad for DDP synchronization
+        if not total_loss.requires_grad:
+            total_loss = total_loss * torch.tensor(1.0, device=reward.device, requires_grad=True)
+        
+        return total_loss

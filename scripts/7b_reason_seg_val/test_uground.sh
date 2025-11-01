@@ -14,7 +14,7 @@ function run_inference() {
         --process_num="${PROCESS_NUM}" \
         --world_size="${WORLD_SIZE}" \
         --dataset_dir="../dataset_sesame" \
-	    --version="runs/UGround-7b_reason_seg_val_llava1.5/hf-UGround-7b_reason_seg_val_llava1.5" \
+        --version="runs/UGround-7b_reason_seg_val_llava1.5_ema/hf-UGround-7b_reason_seg_val_llava1.5_ema" \
         --vision_tower="../dataset_sesame/clip-vit-large-patch14-336" \
         --separate_mm_projector \
         --pad_train_clip_images \
@@ -45,10 +45,10 @@ IFS=$'\n' read -rd '' -a SELECTED_DATASETS <<< "${VAL_DATASET//||/$'\n'}"
 # for dataset in "${datasets[@]}"; do
 for dataset in "${SELECTED_DATASETS[@]}"; do
     echo "Running inference for ${dataset}..."
-    run_inference "${MODEL_KEY}" 5 0 1 "${dataset}" "inference"
+    run_inference "${MODEL_KEY}" 1 0 1 "${dataset}" "inference"
     echo "Waiting for background inference processes to finish... for ${dataset}..."
     wait
     echo "Background processes for ${dataset} finished. Running metrics..."
-    run_inference "${MODEL_KEY}" 5 0 1 "${dataset}" "metrics" 
+    run_inference "${MODEL_KEY}" 1 0 1 "${dataset}" "metrics" 
     echo "Inference and metrics for ${dataset} finished."
 done

@@ -473,9 +473,9 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
         mask_bce_loss = 0
         mask_dice_loss = 0
         num_masks = 0
-        # 累计
-        policy_loss_acc = 0.0
-        policy_loss_count = 0
+        # Collect all rewards for batch-wise policy gradient
+        all_gaussian_losses = []
+        
         for batch_idx in range(len(pred_masks)):
             gt_mask = gt_masks[batch_idx]
             pred_mask = pred_masks[batch_idx]
@@ -509,19 +509,34 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
                 * gt_mask.shape[0]
             )
             mask_dice_loss += gaussian_dice_loss
-            reward = -(gaussian_bce_loss + gaussian_dice_loss).detach()
-            policy_loss_i = self.ppm.policy_forward(reward)
-            if policy_loss_i is not None:
-                policy_loss_acc = policy_loss_acc + policy_loss_i
-                policy_loss_count += 1
+            
+            # Store gaussian losses for policy gradient computation
+            all_gaussian_losses.append(gaussian_bce_loss + gaussian_dice_loss)
             
         mask_bce_loss = self.bce_loss_weight * mask_bce_loss / (num_masks + 1e-8)
         mask_dice_loss = self.dice_loss_weight * mask_dice_loss / (num_masks + 1e-8)
         mask_loss = mask_bce_loss + mask_dice_loss
 
-        # 归一与融合
-        policy_loss = (policy_loss_acc / max(1, policy_loss_count)) if policy_loss_count > 0 else torch.tensor(0.0, device=ce_loss.device)
-        lambda_pg = 0.1  # 可调
+        # Compute policy loss once for all batches
+        policy_loss = torch.tensor(0.0, device=ce_loss.device)
+        if len(all_gaussian_losses) > 0:
+            # Aggregate reward (negative of total gaussian loss)
+            total_gaussian_loss = sum(all_gaussian_losses)
+            reward = -total_gaussian_loss.detach()
+            
+            # Get distributed training info
+            world_size = 1
+            rank = 0
+            if torch.distributed.is_initialized():
+                world_size = torch.distributed.get_world_size()
+                rank = torch.distributed.get_rank()
+            
+            policy_loss = self.ppm.policy_forward(reward, world_size=world_size, rank=rank)
+            if policy_loss is None or isinstance(policy_loss, (int, float)):
+                policy_loss = torch.tensor(0.0, device=ce_loss.device)
+        
+        # Combine all losses
+        lambda_pg = 0.4  # 可调
         loss = ce_loss + mask_loss + lambda_pg * policy_loss
         self.similarity_for_supervision = []
         return {
@@ -774,6 +789,7 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
                     return_dict_in_generate=True,
                     clip_resize_list=clip_resize_list
                 )
+                torch.cuda.empty_cache()
                 output_hidden_states = outputs.hidden_states[-1]
                 output_ids = outputs.sequences
                 all_output_ids.append(output_ids)
@@ -788,6 +804,7 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
                 else:
                     seg_token_num = self.seg_token_num
                     seg_token_mask = output_ids[:, 1:] == self.seg_token_idx
+                    seg_token_mask = seg_token_mask & (seg_token_mask.int().cumsum(dim=-1) <= 10)
                 # hack for IMAGE_TOKEN_INDEX (we suppose that there is only one image, and it is in the front)
                 vision_tower = self.get_vision_tower()
                 num_tokens_per_image = vision_tower.num_patches
@@ -798,7 +815,7 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
                     ],
                     dim=1,
                 )
-            
+                
                 assert len(self.model.text_hidden_fcs) == 1
                 seg_token_embeds_for_similarity, seg_image_token_embeds_for_similarity, \
                 seg_token_embeds_for_sam = self.ppm(self.all_hidden_states, _input_id[None], seg_token_mask, num_tokens_per_image, **kwargs)
