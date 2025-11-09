@@ -315,6 +315,7 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
         assert batch_size == len(offset) - 1
         vision_tower = self.get_vision_tower()
         num_tokens_per_image = vision_tower.num_patches
+        self.similarity_for_supervision.clear()
 
         if inference:
             n_batch = 1
@@ -459,7 +460,6 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
         gt_masks = masks_list
         
         if inference:
-            self.similarity_for_supervision = []
             return {
                 "pred_masks": pred_masks,
                 "gt_masks": gt_masks,
@@ -498,7 +498,8 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
                 * gt_mask.shape[0]
             )
             num_masks += gt_mask.shape[0]
-
+            if self.similarity_for_supervision[batch_idx].shape != gt_mask.shape:
+                import pdb; pdb.set_trace()
             gaussian_bce_loss = (self.simi_loss.compute_gaussian_bce_loss(
                 self.similarity_for_supervision[batch_idx], gt_mask, num_masks=gt_mask.shape[0]) 
                 * gt_mask.shape[0] 
@@ -538,7 +539,6 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
         # Combine all losses
         lambda_pg = 0.4  # 可调
         loss = ce_loss + mask_loss + lambda_pg * policy_loss
-        self.similarity_for_supervision = []
         return {
             "loss": loss,
             "ce_loss": ce_loss,

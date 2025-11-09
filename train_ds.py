@@ -697,6 +697,7 @@ def main(args):
             scheduler,
             writer,
             train_iter,
+            tokenizer,
             args,
         )
 
@@ -707,6 +708,8 @@ def main(args):
         if args.no_eval == False:
             if any('grefcoco' in name for name in args.val_dataset_names):
                 giou, ciou, _, _, = eval_gres(val_loader, model_engine, epoch, writer, args, logger, val_dataset_names)
+            elif any('MultiReasonSeg' in name for name in args.val_dataset_names):
+                giou, ciou, _, _, = ar_validate(val_loader, model_engine, epoch, writer, args, logger, val_dataset_names, tokenizer, args.seg_token_num, args.image_feature_scale_num)
             else:
                 giou, ciou = validate(val_loader, model_engine, epoch, writer, args, logger, val_dataset_names)
             is_best = ciou > args.best_score
@@ -757,6 +760,7 @@ def train(
     scheduler,
     writer,
     train_iter,
+    tokenizer,
     args,
 ):
     """Main training loop."""
@@ -889,6 +893,8 @@ def train(
             if args.no_eval == False:
                 if any('grefcoco' in name for name in args.val_dataset_names):
                     giou, ciou, _, _, = eval_gres(args.val_loader, model_engine, epoch, writer, args, args.logger, args.val_dataset_names)
+                elif any('MultiReasonSeg' in name for name in args.val_dataset_names):
+                    giou, ciou = ar_validate(args.val_loader, model_engine, epoch, writer, args, args.logger, args.val_dataset_names, tokenizer, args.seg_token_num, args.image_feature_scale_num)
                 else:
                     giou, ciou = validate(args.val_loader, model_engine, epoch, writer, args, args.logger, args.val_dataset_names)
                 # giou, ciou = validate(args.val_loader, model_engine, epoch, writer, args, args.logger, args.val_dataset_names)
@@ -1168,6 +1174,7 @@ def ar_validate(val_loader, model_engine, epoch, writer, args, logger, dataset_n
         writer.add_scalar("val/ciou", ciou, model_engine.global_steps)
         print("{}, epoch: {}, giou: {:.4f}, ciou: {:.4f}".format(dataset_name, epoch, giou, ciou))
 
+    return giou, ciou
 
 
 def validate(val_loader, model_engine, epoch, writer, args, logger, dataset_name):

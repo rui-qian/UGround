@@ -72,7 +72,7 @@ class MultiReasonSegValDataset(torch.utils.data.Dataset):
                 sub_data = json.load(f)
                 reason_file.extend(sub_data)
        
-        self.multi_reason_seg_data = reason_file
+        self.multi_reason_seg_data = reason_file[:20]
         print("number of multi_reason_seg samples(val split): ", len(reason_file))
 
        
