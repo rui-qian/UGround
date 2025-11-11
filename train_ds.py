@@ -709,7 +709,7 @@ def main(args):
             if any('grefcoco' in name for name in args.val_dataset_names):
                 giou, ciou, _, _, = eval_gres(val_loader, model_engine, epoch, writer, args, logger, val_dataset_names)
             elif any('MultiReasonSeg' in name for name in args.val_dataset_names):
-                giou, ciou, _, _, = ar_validate(val_loader, model_engine, epoch, writer, args, logger, val_dataset_names, tokenizer, args.seg_token_num, args.image_feature_scale_num)
+                giou, ciou = ar_validate(val_loader, model_engine, epoch, writer, args, logger, val_dataset_names, tokenizer, args.seg_token_num, args.image_feature_scale_num)
             else:
                 giou, ciou = validate(val_loader, model_engine, epoch, writer, args, logger, val_dataset_names)
             is_best = ciou > args.best_score
