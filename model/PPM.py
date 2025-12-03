@@ -50,6 +50,7 @@ class PolicyPromptedMasking(nn.Module):
             1: self._policy_walker_mode1,
             2: self._policy_walker_mode2,
             3: self._policy_walker_mode3,
+            4: self._policy_walker_mode4,
         }
                     
     def recurrent_unrolled(self, hidden_states, input_ids, seg_token_mask, num_patches):        
@@ -156,6 +157,43 @@ class PolicyPromptedMasking(nn.Module):
         seg_image_token_embeds_for_similarity = self.seg_image_token_embeds[batch_indices, actions]  # [N_seg, P, D]
         # Use the same chosen layer for SAM branch for consistency
         seg_token_embeds_for_sam = seg_token_embeds_for_similarity
+        return seg_token_embeds_for_similarity, seg_image_token_embeds_for_similarity, seg_token_embeds_for_sam
+
+    def _policy_walker_mode4(self):
+        """
+        Soft-gating mode without reinforcement learning: Use learned soft-attention mechanism
+        to compute weighted average over layer outputs. No explicit loss on gates, just
+        end-to-end learning through the main task loss.
+        """
+        
+        # Build per-token layer logits from features (NOT detached) and learnable per-layer weights
+        # seg_token_embeds: [N_seg, L, D], layer_gate_W_similarity: [L, D]
+        # logits: [N_seg, L]
+        logits_similarity = torch.einsum('nld,ld->nl', self.seg_token_embeds, self._layer_gate_W_similarity)
+        
+        # Compute soft attention weights (no sampling, just softmax)
+        if logits_similarity.size(0) > 0:
+            layer_weights = torch.softmax(logits_similarity, dim=-1)  # [N_seg, L]
+            self.last_layer_probs_mean = layer_weights.mean(dim=0).detach()  # [L] for monitoring
+        else:
+            self.last_layer_probs_mean = None
+            return self._policy_walker_mode1()
+        
+        # Soft-gating: Weighted combination of all layers (no hard selection)
+        # layer_weights: [N_seg, L], seg_token_embeds: [N_seg, L, D]
+        seg_token_embeds_for_similarity = torch.einsum('nl,nld->nd', layer_weights, self.seg_token_embeds)  # [N_seg, D]
+        
+        # For image tokens: seg_image_token_embeds: [N_seg, L, P, D]
+        # Apply same attention weights across patches
+        seg_image_token_embeds_for_similarity = torch.einsum('nl,nlpd->npd', layer_weights, self.seg_image_token_embeds)  # [N_seg, P, D]
+        
+        # For SAM branch, use the same soft-gated features for consistency
+        seg_token_embeds_for_sam = seg_token_embeds_for_similarity
+        
+        # No log_probs needed - this mode doesn't use reinforcement learning
+        # The attention weights are learned end-to-end through the main task loss
+        self.log_probs = None
+        
         return seg_token_embeds_for_similarity, seg_image_token_embeds_for_similarity, seg_token_embeds_for_sam
 
     def policy_forward(self, reward: torch.Tensor, ema_decay: float = 0.9, world_size: int = 1, rank: int = 0) -> torch.Tensor:
