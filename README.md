@@ -94,8 +94,8 @@ Results on ReasonSeg
 | [UGround-LLaVA-v1.5-7B_ema/test](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5_ema/tree/main)  |63.36 66.09 |  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5_ema/blob/main/ReasonSeg_test_7b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5_ema/raw/main/meta_6.log)
 | [UGround-LLaVA-v1.5-13B_ema/val](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_val_llava1.5_ema/tree/main)  |67.89 74.92 |  [archive](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_val_llava1.5_ema/blob/main/ReasonSeg_val_13b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_val_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_val_llava1.5_ema/raw/main/meta_4.log)
 | [UGround-LLaVA-v1.5-13B_ema/test](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5_ema/tree/main)  |65.50 65.86 |  [archive](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5_ema/blob/main/ReasonSeg_test_13b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5_ema/raw/main/meta_5.log)
-| [UGround-LLaVA-v1.5-7B/val](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/tree/main)  |66.13 72.07 |  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/blob/main/reasonseg_val.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/raw/main/meta_3.log)
-| [UGround-LLaVA-v1.5-7B_ema_mixed/val](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema_mixed/tree/main)  |66.69 74.13 |  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema_mixed/blob/main/reasonseg_val.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema_mixed/tree/main) [\[logs\]](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema_mixed/raw/main/meta_3.log) 
+| [UGround-LLaVA-v1.5-7B/val](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/tree/main)  |66.13 72.07 \* |  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/blob/main/reasonseg_val.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema/raw/main/meta_3.log)
+| [UGround-LLaVA-v1.5-7B_ema_mixed/val](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema_mixed/tree/main)  |66.69 74.13 \* |  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema_mixed/blob/main/reasonseg_val.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema_mixed/tree/main) [\[logs\]](https://huggingface.co/dengch2000/hf-UGround-7b_reason_seg_val_llava1.5_ema_mixed/raw/main/meta_3.log) 
 | [UGround-LLaVA-v1.5-7B/test](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5/tree/main)  |63.55 65.44|  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5/blob/main/ReasonSeg_test_7b.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_reason_seg_test_llava1.5/tree/main) 
 | UGround-LLaVA-v1.5-13B/val|- -|  archive| weights
 | [UGround-LLaVA-v1.5-13B/test](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5/tree/main)  |65.03 65.47|  [archive](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5/blob/main/ReasonSeg_test_13b.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-13b_reason_seg_test_llava1.5/tree/main)
@@ -107,7 +107,22 @@ Results on FP-ReferSeg
 | [UGround-LLaVA-v1.5-7B(fp-refcocog)](https://huggingface.co/rui-qian/hf-UGround-7b_fp_refer_seg_llava1.5_ema/tree/main)  |See:86.86 cIoU:58.55|  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_fp_refer_seg_llava1.5_ema/blob/main/UGround7B-fprefcocog.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_fp_refer_seg_llava1.5_ema/tree/main)  [\[logs\]](https://huggingface.co/rui-qian/hf-UGround-7b_fp_refer_seg_llava1.5_ema/raw/main/meta_1.log)
 Results on gReferSeg
 | [UGround-LLaVA-v1.5-7B](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main)  |74.49 66.38 |  [archive](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/blob/main/gres_7b_ema.png) | [weights](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/rui-qian/hf-UGround-7b_grefer_seg_llava1.5_ema/raw/main/meta_3.log)
-| [UGround-LLaVA-v1.5-7B](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main)  |72.46 65.56 |  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/blob/main/gref.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/raw/main/meta_7.log)
+| [UGround-LLaVA-v1.5-7B](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main)  |72.46 65.56 \*|  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/blob/main/gref.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/raw/main/meta_7.log)
+
+> [!TIP]
+> Please note that CUDA 11.7 (cu117) and CUDA 11.8 (cu118) may lead to slight differences in results. Based on our tests, both cu117 and cu118 can be installed successfully on **NVIDIA A100-SXM4-40GB**; however, **cu117 fails to install on NVIDIA H800**. See also: [*build.sh*](./build.sh).
+
+```bash
+pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 triton==2.0.0 \
+  --index-url https://download.pytorch.org/whl/cu118
+```
+
+```bash
+pip install torch==2.0.1+cu117 torchvision==0.15.2+cu117 triton==2.0.0 \
+  --index-url https://download.pytorch.org/whl/cu117
+```
+> [!NOTE]
+>\* indicates that the results are obtained using CUDA 11.8.
 
 ## Experimental results 
 
