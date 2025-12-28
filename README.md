@@ -110,7 +110,8 @@ Results on gReferSeg
 | [UGround-LLaVA-v1.5-7B](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main)  |72.46 65.56 \*|  [archive](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/blob/main/gref.png) | [weights(Credit: Chuanhang Deng)](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/tree/main) [\[logs\]](https://huggingface.co/dengch2000/hf-UGround-7b_grefer_seg_llava1.5_ema/raw/main/meta_7.log)
 
 > [!TIP]
-> Please note that CUDA 11.7 (cu117) and CUDA 11.8 (cu118) may lead to slight differences in results. Based on our tests, both cu117 and cu118 can be installed successfully on **NVIDIA A100-SXM4-40GB**; however, **cu117 fails to install on NVIDIA H800**. See also: [*build.sh*](./build.sh).
+> Please note that CUDA 11.7 (cu117) and CUDA 11.8 (cu118) may lead to slight differences in results. Based on our tests, both cu117 and cu118 can be installed successfully on **NVIDIA A100-SXM4-40GB**; however, **cu117 fails to install on NVIDIA H800**. See also: [*build.sh*](./build.sh).  
+>— Contributed by Chuanhang Deng.
 
 ```bash
 pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 triton==2.0.0 \
