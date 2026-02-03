@@ -155,6 +155,7 @@ pip install torch==2.0.1+cu117 torchvision==0.15.2+cu117 triton==2.0.0 \
 ./scripts/13b_reason_seg_val/app_uground.sh     # UGround Dashboard
 ```
 <p align="left"> <img src="assets/inference.png" width="70%"> </p>
+<p align="left"> <img src="assets/multi_inference.png" width="70%"> </p>
 
 ## Supported Features
 - #### <a id="full-logging"></a> Full Logging
@@ -166,6 +167,7 @@ pip install torch==2.0.1+cu117 torchvision==0.15.2+cu117 triton==2.0.0 \
 
 - #### <a id="data-visualization"></a> Data Visualization
 <p align="left"> <img src="assets/data_visualization.png" width="70%"> </p>
+<p align="left"> <img src="assets/data_example.png" width="70%"> </p>
 
 ```bash= #
 ./scripts/7b_reason_seg_val/dataset_demo.sh    # Data Visualization Dashboard

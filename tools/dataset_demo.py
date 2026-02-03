@@ -57,6 +57,18 @@ class WebDemoHandler:
             (128, 0, 128), (0, 128, 128), (255, 165, 0), (255, 20, 147), (0, 191, 255)
         ]
         
+        # Store current sample data for selective mask visualization
+        self.current_sample_data = None
+        self.current_image = None
+        self.current_masks = None
+        self.current_sampled_sents = None
+        self.current_flattened_tags = None  # Flattened tags for selection
+        
+        # Store original gallery files for reference
+        self.original_binary_file = None
+        self.original_overlay_file = None
+        self.original_image_file = None
+        
         # self.dataset_mappings = {
         #     'sem_seg': ['ade20k', 'cocostuff', 'pascal_part', 'paco_lvis', 'mapillary'],
         #     'refer_seg': ['refclef', 'refcoco', 'refcoco+', 'refcocog','grefcoco', 'refzom'],
@@ -282,7 +294,8 @@ class WebDemoHandler:
     
     def decode_masks_from_sample_data(self, sample_data):
         try:
-            masks_tensor = sample_data[4]          
+            masks_tensor = sample_data[4]
+            print(sample_data[9])
             if hasattr(masks_tensor, 'numpy'):
                 masks_array = masks_tensor.numpy()
             elif hasattr(masks_tensor, 'cpu'):
@@ -295,8 +308,7 @@ class WebDemoHandler:
                 mask = masks_array[i]
                 if len(mask.shape) > 2:
                     mask = mask.squeeze()
-                if np.sum(mask > 0) == 0:
-                    continue
+                # Don't skip empty masks to maintain index correspondence with tags
                 masks.append(mask)
             return masks
         
@@ -337,6 +349,15 @@ class WebDemoHandler:
 
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             masks = self.decode_masks_from_sample_data(sample_data)
+            
+            # Store current sample data for selective mask visualization
+            self.current_sample_data = sample_data
+            self.current_image = image
+            self.current_masks = masks
+            self.current_sampled_sents = sample_data[9] if len(sample_data) > 9 else []
+            
+            # Flatten tags for selection
+            self.current_flattened_tags, _ = self.flatten_sampled_sents(self.current_sampled_sents)
 
             temp_files = []
 
@@ -374,6 +395,11 @@ class WebDemoHandler:
             plt.close(fig_original)
             temp_files.append(temp_file_original.name)
             self.temp_files.append(temp_file_original.name)
+            
+            # Store original gallery files for selective mask visualization
+            self.original_binary_file = temp_file_binary.name
+            self.original_overlay_file = temp_file_overlay.name
+            self.original_image_file = temp_file_original.name
 
             # Generate field content list
             field_contents = self.generate_sample_details(sample_data)
@@ -733,6 +759,198 @@ Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.nu
             print(f"⚠️ Error creating mask overlay image: {e}")
             return image.copy()
     
+    def flatten_sampled_sents(self, sampled_sents):
+        """Flatten nested sampled_sents structure and create tag-to-index mapping"""
+        try:
+            flattened_tags = []
+            tag_to_mask_index = {}  # Maps tag to its corresponding mask index
+            
+            if not sampled_sents:
+                return flattened_tags, tag_to_mask_index
+            
+            mask_index = 0
+            for group in sampled_sents:
+                if isinstance(group, list):
+                    for tag in group:
+                        if isinstance(tag, str) and tag.strip():
+                            flattened_tags.append(tag.strip())
+                            tag_to_mask_index[tag.strip()] = mask_index
+                            mask_index += 1
+                elif isinstance(group, str) and group.strip():
+                    flattened_tags.append(group.strip())
+                    tag_to_mask_index[group.strip()] = mask_index
+                    mask_index += 1
+            
+            return flattened_tags, tag_to_mask_index
+            
+        except Exception as e:
+            print(f"⚠️ Error flattening sampled_sents: {e}")
+            return [], {}
+    
+    def create_selective_binary_mask_image(self, masks, image_shape, selected_tags, tag_to_mask_index):
+        """Create binary mask image with only selected tags"""
+        try:
+            # Create black binary image
+            binary_image = np.zeros(image_shape, dtype=np.uint8)
+            
+            if not selected_tags:
+                # If no tags selected, show all masks
+                for i, mask in enumerate(masks):
+                    # Check if mask size matches image
+                    if mask.shape[:2] != image_shape:
+                        mask = cv2.resize(mask, (image_shape[1], image_shape[0]), interpolation=cv2.INTER_NEAREST)
+                    
+                    # Ensure mask is 2D
+                    if len(mask.shape) > 2:
+                        mask = mask.squeeze()
+                    
+                    # Set mask region to white (255)
+                    mask_bool = mask > 0
+                    binary_image[mask_bool] = 255
+            else:
+                # Only show selected tags
+                for tag in selected_tags:
+                    if tag in tag_to_mask_index:
+                        mask_idx = tag_to_mask_index[tag]
+                        if mask_idx < len(masks):
+                            mask = masks[mask_idx]
+                            
+                            # Check if mask size matches image
+                            if mask.shape[:2] != image_shape:
+                                mask = cv2.resize(mask, (image_shape[1], image_shape[0]), interpolation=cv2.INTER_NEAREST)
+                            
+                            # Ensure mask is 2D
+                            if len(mask.shape) > 2:
+                                mask = mask.squeeze()
+                            
+                            # Set mask region to white (255)
+                            mask_bool = mask > 0
+                            binary_image[mask_bool] = 255
+            
+            return binary_image
+            
+        except Exception as e:
+            print(f"⚠️ Error creating selective binary mask image: {e}")
+            return np.zeros(image_shape, dtype=np.uint8)
+    
+    def create_selective_mask_overlay_image(self, image, masks, selected_tags, tag_to_mask_index):
+        """Create mask overlay image with only selected tags"""
+        try:
+            overlay_image = image.copy().astype(np.float32)
+            
+            if not selected_tags:
+                # If no tags selected, show all masks
+                for i, mask in enumerate(masks):
+                    self._apply_mask_to_overlay(overlay_image, mask, i, image.shape)
+            else:
+                # Only show selected tags
+                for tag in selected_tags:
+                    if tag in tag_to_mask_index:
+                        idx = tag_to_mask_index[tag]
+                        if idx < len(masks):
+                            self._apply_mask_to_overlay(overlay_image, masks[idx], idx, image.shape)
+            
+            return overlay_image
+            
+        except Exception as e:
+            print(f"⚠️ Error creating selective mask overlay: {e}")
+            return image.copy()
+    
+    def _apply_mask_to_overlay(self, overlay_image, mask, idx, image_shape):
+        """Helper method to apply a single mask to overlay image"""
+        try:
+            # Check if mask size matches image
+            if mask.shape[:2] != image_shape[:2]:
+                mask = cv2.resize(mask, (image_shape[1], image_shape[0]), interpolation=cv2.INTER_NEAREST)
+            
+            # Ensure mask is 2D
+            if len(mask.shape) > 2:
+                mask = mask.squeeze()
+            
+            # Check if mask is empty (all zeros)
+            if np.sum(mask > 0) == 0:
+                # Empty mask - nothing to draw, but don't raise an error
+                return
+            
+            color = np.array(self.colors[idx % len(self.colors)])
+            colored_mask = np.zeros_like(overlay_image, dtype=np.float32)
+            
+            # Safe boolean indexing
+            mask_bool = mask > 0
+            if mask_bool.shape[:2] == colored_mask.shape[:2]:
+                colored_mask[mask_bool] = color
+            else:
+                return
+            
+            # Add white edges
+            kernel = np.ones((3, 3), np.uint8)
+            mask_dilated = cv2.dilate(mask.astype(np.uint8), kernel, iterations=2)
+            mask_eroded = cv2.erode(mask.astype(np.uint8), kernel, iterations=1)
+            edge_mask = mask_dilated - mask_eroded
+            
+            # Apply segmentation mask
+            mask_area = mask > 0
+            if mask_area.shape[:2] == overlay_image.shape[:2]:
+                overlay_image[mask_area] = 0.6 * overlay_image[mask_area] + 0.4 * colored_mask[mask_area]
+                
+                # Add white edges
+                edge_area = edge_mask > 0
+                if edge_area.shape[:2] == overlay_image.shape[:2]:
+                    overlay_image[edge_area] = 0.3 * overlay_image[edge_area] + 0.7 * np.array([255, 255, 255])
+        
+        except Exception as e:
+            print(f"⚠️ Error applying mask {idx}: {e}")
+    
+    def update_overlay_with_selected_tags(self, selected_tags):
+        """Update gallery with selective masks based on selected tags"""
+        try:
+            if (self.current_image is None or self.current_masks is None or 
+                self.current_sampled_sents is None or self.current_flattened_tags is None):
+                return []
+            
+            # Get tag to mask index mapping
+            _, tag_to_mask_index = self.flatten_sampled_sents(self.current_sampled_sents)
+            
+            # Create selective binary mask
+            binary_mask_image = self.create_selective_binary_mask_image(
+                self.current_masks, self.current_image.shape[:2], selected_tags, tag_to_mask_index
+            )
+            
+            # Create selective overlay
+            overlay_image = self.create_selective_mask_overlay_image(
+                self.current_image, self.current_masks, selected_tags, tag_to_mask_index
+            )
+            
+            # Save binary mask to temporary file
+            fig_binary, ax_binary = plt.subplots(1, 1, figsize=(12, 8))
+            ax_binary.imshow(binary_mask_image, cmap='gray')
+            ax_binary.axis('off')
+            
+            temp_file_binary = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            plt.savefig(temp_file_binary.name, dpi=100, bbox_inches='tight')
+            plt.close(fig_binary)
+            self.temp_files.append(temp_file_binary.name)
+            
+            # Save overlay to temporary file
+            fig_overlay, ax_overlay = plt.subplots(1, 1, figsize=(12, 8))
+            ax_overlay.imshow(overlay_image.astype(np.uint8))
+            ax_overlay.axis('off')
+            
+            temp_file_overlay = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            plt.savefig(temp_file_overlay.name, dpi=100, bbox_inches='tight')
+            plt.close(fig_overlay)
+            self.temp_files.append(temp_file_overlay.name)
+            
+            # Return gallery with new binary, new overlay, and original image
+            if self.original_image_file:
+                return [temp_file_binary.name, temp_file_overlay.name, self.original_image_file]
+            
+            return []
+            
+        except Exception as e:
+            print(f"⚠️ Error updating overlay: {e}")
+            return []
+    
     def get_labels_from_sampled_sents(self, sampled_sents):
         try:
             labels = []
@@ -997,14 +1215,21 @@ def create_web_demo(args=None):
                 current_index = handler.current_filename_index
                 total_samples = len(handler.filename_list)
                 textbox_update = gr.update(label=f"Go to File ({current_index}/{total_samples})", value=handler.current_filename)
-                return accordion_result + [textbox_update]
+                
+                # Update tag choices based on current sample
+                tag_choices = []
+                if handler.current_flattened_tags:
+                    tag_choices = handler.current_flattened_tags
+                tag_update = gr.update(choices=tag_choices, value=[])
+                
+                return accordion_result + [textbox_update, tag_update]
             else:
                 empty_fields = [""] * 12
-                return [None] + empty_fields + [gr.update()]
+                return [None] + empty_fields + [gr.update(), gr.update()]
         except Exception as e:
             print(f"Next event exception: {e}")
             empty_fields = [""] * 12
-            return [None] + empty_fields + [gr.update()]
+            return [None] + empty_fields + [gr.update(), gr.update()]
     
     def safe_prev():
         try:
@@ -1015,14 +1240,21 @@ def create_web_demo(args=None):
                 current_index = handler.current_filename_index
                 total_samples = len(handler.filename_list)
                 textbox_update = gr.update(label=f"Go to File ({current_index}/{total_samples})", value=handler.current_filename)
-                return accordion_result + [textbox_update]
+                
+                # Update tag choices based on current sample
+                tag_choices = []
+                if handler.current_flattened_tags:
+                    tag_choices = handler.current_flattened_tags
+                tag_update = gr.update(choices=tag_choices, value=[])
+                
+                return accordion_result + [textbox_update, tag_update]
             else:
                 empty_fields = [""] * 12
-                return [None] + empty_fields + [gr.update()]
+                return [None] + empty_fields + [gr.update(), gr.update()]
         except Exception as e:
             print(f"Prev event exception: {e}")
             empty_fields = [""] * 12
-            return [None] + empty_fields + [gr.update()]
+            return [None] + empty_fields + [gr.update(), gr.update()]
     
     def safe_random():
         try:
@@ -1033,14 +1265,21 @@ def create_web_demo(args=None):
                 current_index = handler.current_filename_index
                 total_samples = len(handler.filename_list)
                 textbox_update = gr.update(label=f"Go to File ({current_index}/{total_samples})", value=handler.current_filename)
-                return accordion_result + [textbox_update]
+                
+                # Update tag choices based on current sample
+                tag_choices = []
+                if handler.current_flattened_tags:
+                    tag_choices = handler.current_flattened_tags
+                tag_update = gr.update(choices=tag_choices, value=[])
+                
+                return accordion_result + [textbox_update, tag_update]
             else:
                 empty_fields = [""] * 12
-                return [None] + empty_fields + [gr.update()]
+                return [None] + empty_fields + [gr.update(), gr.update()]
         except Exception as e:
             print(f"Random event exception: {e}")
             empty_fields = [""] * 12
-            return [None] + empty_fields + [gr.update()]
+            return [None] + empty_fields + [gr.update(), gr.update()]
     
     def safe_search(target_file_name):
         try:
@@ -1055,14 +1294,21 @@ def create_web_demo(args=None):
                     value=handler.current_filename,
                     placeholder=placeholder_update.get('placeholder', '') if placeholder_update else ''
                 )
-                return accordion_result + [textbox_update]
+                
+                # Update tag choices based on current sample
+                tag_choices = []
+                if handler.current_flattened_tags:
+                    tag_choices = handler.current_flattened_tags
+                tag_update = gr.update(choices=tag_choices, value=[])
+                
+                return accordion_result + [textbox_update, tag_update]
             else:
                 empty_fields = [""] * 12
-                return [None] + empty_fields + [gr.update()]
+                return [None] + empty_fields + [gr.update(), gr.update()]
         except Exception as e:
             print(f"Search event exception: {e}")
             empty_fields = [""] * 12
-            return [None] + empty_fields + [gr.update()]
+            return [None] + empty_fields + [gr.update(), gr.update()]
     
 
     with gr.Blocks(
@@ -1152,7 +1398,26 @@ def create_web_demo(args=None):
                                     info="Semantic segmentation datasets"
                                 )
                                 refer_seg_dropdown = gr.Dropdown(
-                                    choices=["refclef", "refcoco", "refcoco+", "refcocog", "grefcoco", "refzom"],
+                                    choices=[
+                                    "refclef|train",   
+                                    "refcocog|train",  
+                                    "refcocog|val",
+                                    "refcocog|test",
+                                    "refcoco+|train",
+                                    "refcoco+|val",
+                                    "refcoco+|testA",
+                                    "refcoco+|testB",
+                                    "refcoco|train",
+                                    "refcoco|val",
+                                    "refcoco|testA",
+                                    "refcoco|testB", 
+                                    "grefcoco|train",
+                                    "grefcoco|val",
+                                    "grefcoco|testA",
+                                    "grefcoco|testB",
+                                    "refzom|train",
+                                    "refzom|test"
+                                ],
                                     label="refer_seg Datasets",
                                     multiselect=True,
                                     value=[],
@@ -1166,7 +1431,14 @@ def create_web_demo(args=None):
                                     info="Referring segmentation datasets"
                                 )
                                 correct_refer_seg_dropdown = gr.Dropdown(
-                                    choices=["fprefcoco", "fprefcoco+", "fprefcocog"],
+                                    choices=[
+                                    "fprefcoco|train",
+                                    "fprefcoco|val",
+                                    "fprefcoco+|train",
+                                    "fprefcoco+|val",
+                                    "fprefcocog|train",
+                                    "fprefcocog|val",
+                                    ],
                                     label="correct_refer_seg Datasets",
                                     multiselect=True,
                                     value=[],
@@ -1250,6 +1522,17 @@ def create_web_demo(args=None):
                             allow_preview=True,
                             preview=True
                         )
+                        
+                        # Tag selection interface for selective mask visualization
+                        with gr.Accordion("🏷️ Mask Tags Selection", open=True):
+                            gr.Markdown("**Select tags to display only corresponding masks. Leave empty to show all masks.**")
+                            tag_checkboxes = gr.CheckboxGroup(
+                                choices=[],
+                                value=[],
+                                label="Available Tags (sampled_sents)",
+                                interactive=True,
+                                elem_id="tag_checkboxes"
+                            )
                 
                 with gr.Row():
                     with gr.Column():
@@ -1300,23 +1583,30 @@ def create_web_demo(args=None):
                 
                 next_btn.click(
                     safe_next,
-                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input]
+                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes]
                 )
                 
                 prev_btn.click(
                     safe_prev,
-                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input]
+                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes]
                 )
                 
                 random_jump_btn.click(
                     safe_random,
-                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input]
+                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes]
                 )
                 
                 jump_to_file_btn.click(
                     safe_search,
                     inputs=jump_file_name_input,
-                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input]
+                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes]
+                )
+                
+                # Add tag selection change callback
+                tag_checkboxes.change(
+                    handler.update_overlay_with_selected_tags,
+                    inputs=tag_checkboxes,
+                    outputs=sample_gallery
                 )
         
 

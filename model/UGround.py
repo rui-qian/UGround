@@ -710,15 +710,16 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
             )
 
             pred_embeddings_ = []
+            # multi-target: presence is tracked per target (per image)
             object_presence = []
             for i in range(len(seg_token_offset) - 1):
                 if seg_token_counts[i] == 0:
                     pred_embeddings_.append(None)
-                    object_presence.append(False)
+                    object_presence.append([])
                 else:
                     start_i, end_i = seg_token_offset[i], seg_token_offset[i + 1]
                     pred_embeddings_.append(pred_embeddings[start_i:end_i])
-                    object_presence.append(True)
+                    object_presence.append([True] * int(seg_token_counts[i].item()))
             pred_embeddings = pred_embeddings_
 
             # Run SAM
@@ -739,15 +740,21 @@ class UGroundForCausalLM(LlavaLlamaForCausalLM):
             output_pred_masks = []
             for i, pred_mask in enumerate(pred_masks):
                 if pred_embeddings[i] is not None:
-                    pred_mask = (pred_mask[0] > 0).int()
-                    if pred_mask.sum() == 0:
-                        object_presence[i] = False
+                    # pred_mask: [N, H, W] (N targets). Keep all targets.
+                    pred_mask = (pred_mask > 0).int()
+                    # update per-target presence (empty mask => not present)
+                    target_presence = (pred_mask.flatten(1).sum(1) > 0).tolist()
+                    object_presence[i] = target_presence
                     output_pred_masks.append(pred_mask)
                 else:
-                    output_pred_masks.append(pred_mask)
+                    # no [SEG] token produced -> no targets
+                    h, w = sam_mask_shape_list[i][1]
+                    output_pred_masks.append(
+                        torch.zeros((0, h, w), device=image_embeddings.device).int()
+                    )
 
         return output_ids, output_pred_masks, object_presence, None
-
+        
     def evaluate_v2(
         self,
         images_clip=None,
