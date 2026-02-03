@@ -203,4 +203,4 @@ If you use our work or our implementation in this repo, or find them helpful, pl
 }
 ```
 ## Contact
-If you have any questions, feel free to reach out at qianruii@126.com, xyin@zju.edu.cn, dengch2000@gmail.com, pzy2000@sjtu.edu.cn, jianxxiong@gmail.com, zhaiwei682@gmail.com and dejingdou@gmail.com.
+If you have any questions, feel free to reach out at qiianruii@gmail.com, xyin@zju.edu.cn, dengch2000@gmail.com, pzy2000@sjtu.edu.cn, jianxxiong@gmail.com, zhaiwei682@gmail.com and dejingdou@gmail.com.
