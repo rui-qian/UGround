@@ -78,9 +78,6 @@ class ReferSegDataset(torch.utils.data.Dataset):
         )  # ['refclef', 'refcoco', 'refcoco+', 'refcocog']
         self.refer_seg_data = {}
         for ds in self.refer_seg_ds_list:
-            # Allow "dataset|split" (e.g., "refcoco|train"); default split is "train".
-            ds, _, split = ds.strip().partition("|")  # safer than split("|") if there are extra '|'
-            split = (split.strip() or "train")
             if ds == "refcocog":
                 splitBy = "umd"
             else:
@@ -92,7 +89,7 @@ class ReferSegDataset(torch.utils.data.Dataset):
                 refer_api = REFZOM_REFER(DATA_DIR, ds)
             else:
                 refer_api = REFER(DATA_DIR, ds, splitBy)
-            ref_ids_train = refer_api.getRefIds(split=split)
+            ref_ids_train = refer_api.getRefIds(split="train")
             images_ids_train = refer_api.getImgIds(ref_ids=ref_ids_train)
             refs_train = refer_api.loadRefs(ref_ids=ref_ids_train)
 
@@ -153,7 +150,6 @@ class ReferSegDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         ds = random.randint(0, len(self.refer_seg_ds_list) - 1)
         ds = self.refer_seg_ds_list[ds]
-        ds, _, _ = ds.partition("|")  #
         refer_seg_ds = self.refer_seg_data[ds]
         images = refer_seg_ds["images"]
         annotations = refer_seg_ds["annotations"]
@@ -186,7 +182,7 @@ class ReferSegDataset(torch.utils.data.Dataset):
         sampled_ann_ids = [ann_ids[ind] for ind in sampled_inds]
         sampled_classes = sampled_sents
         sampled_ann_ids, sampled_classes = allocate_class(sampled_ann_ids, sampled_classes, max_question_num=self.num_classes_per_sample, max_class_per_question=self.num_classes_per_question)
-
+ 
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # preprocess image for clip
@@ -367,7 +363,7 @@ class ReferSegDataset(torch.utils.data.Dataset):
         # Keep all masks (including empty ones)
         masks = np.stack(masks, axis=0)
         masks = torch.from_numpy(masks.astype(np.uint8))
-       
+
         seg_count = ' '.join(conversations).count('[SEG') / self.seg_token_num
         valid_masks = sum(1 for j in range(masks.shape[0]) if masks[j].sum() > 0)
         if valid_masks != seg_count: return self.__getitem__(0)

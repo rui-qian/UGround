@@ -9,11 +9,169 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from collections import OrderedDict
+from typing import Optional, Dict, Any
 from dataloaders.dataset import HybridDataset
 from torch.utils.data import DataLoader
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+import json
  
+def _extract_file_id(image_path: str) -> str:
+    file_name = os.path.basename(image_path)
+    return os.path.splitext(file_name)[0]
+
+
+def _pack_masks_packbits(masks) -> Optional[Dict[str, Any]]:
+    """
+    Pack masks to a compact, pickle-friendly form.
+    Output format:
+      {
+        "shape": [K, H, W],
+        "packed_bits": bytes,
+        "packed_width": int,   # number of uint8 per row after packbits (W bits -> ceil(W/8) bytes)
+      }
+    """
+    if masks is None:
+        return None
+    try:
+        if hasattr(masks, "detach"):
+            masks_np = masks.detach().cpu().numpy()
+        elif hasattr(masks, "cpu"):
+            masks_np = masks.cpu().numpy()
+        elif hasattr(masks, "numpy"):
+            masks_np = masks.numpy()
+        else:
+            masks_np = np.asarray(masks)
+
+        if masks_np.size == 0:
+            return {"shape": list(masks_np.shape), "packed_bits": b"", "packed_width": 0}
+
+        # Ensure (K, H, W)
+        if masks_np.ndim == 2:
+            masks_np = masks_np[None, ...]
+        elif masks_np.ndim == 3:
+            pass
+        else:
+            masks_np = np.squeeze(masks_np)
+            if masks_np.ndim == 2:
+                masks_np = masks_np[None, ...]
+
+        masks_np = (masks_np > 0).astype(np.uint8)
+        k, h, w = masks_np.shape
+        flat = masks_np.reshape(k * h, w)
+        packed = np.packbits(flat, axis=1)
+        return {
+            "shape": [int(k), int(h), int(w)],
+            "packed_bits": packed.tobytes(),
+            "packed_width": int(packed.shape[1]),
+        }
+    except Exception as e:
+        print(f"⚠️ Failed to pack masks: {e}")
+        return None
+
+
+def _unpack_masks_packbits(mask_pack: Optional[Dict[str, Any]]):
+    """Unpack masks back to a numpy array of shape (K, H, W), dtype uint8."""
+    if not mask_pack:
+        return None
+    try:
+        shape = mask_pack.get("shape", None)
+        packed_bits = mask_pack.get("packed_bits", b"")
+        packed_width = int(mask_pack.get("packed_width", 0))
+        if not shape or len(shape) != 3:
+            return None
+        k, h, w = [int(x) for x in shape]
+        if k <= 0 or h <= 0 or w <= 0:
+            return np.zeros((max(k, 0), max(h, 0), max(w, 0)), dtype=np.uint8)
+        if packed_width <= 0 or not packed_bits:
+            return np.zeros((k, h, w), dtype=np.uint8)
+
+        packed = np.frombuffer(packed_bits, dtype=np.uint8).reshape(k * h, packed_width)
+        flat = np.unpackbits(packed, axis=1)[:, :w]
+        return flat.reshape(k, h, w).astype(np.uint8)
+    except Exception as e:
+        print(f"⚠️ Failed to unpack masks: {e}")
+        return None
+
+
+def _pack_sample_for_mapping(sample_data):
+    """
+    Pack a sampled item from HybridDataset into a lightweight dict stored in OrderedDict.
+    IMPORTANT: this is the *only* source of truth later; we must not re-index HybridDataset.
+    We intentionally do NOT store large tensors (image/image_clip/label/masks tensor).
+    """
+    if sample_data is None or len(sample_data) == 0:
+        return None, None
+
+    image_path = sample_data[0] if len(sample_data) > 0 else None
+    if not image_path:
+        return None, None
+
+    file_id = _extract_file_id(image_path)
+    masks_pack = _pack_masks_packbits(sample_data[4] if len(sample_data) > 4 else None)
+
+    packed = {
+        "image_path": image_path,
+        "conversations": sample_data[3] if len(sample_data) > 3 else None,
+        "resize": sample_data[6] if len(sample_data) > 6 else None,
+        "clip_resize": sample_data[7] if len(sample_data) > 7 else None,
+        "questions": sample_data[8] if len(sample_data) > 8 else None,
+        "sampled_sents": sample_data[9] if len(sample_data) > 9 else None,
+        "use_assign_list": sample_data[10] if len(sample_data) > 10 else None,
+        "inference": sample_data[11] if len(sample_data) > 11 else None,
+        "masks_packbits": masks_pack,
+        # For debugging / introspection
+        "fields_len": len(sample_data),
+    }
+    return file_id, packed
+
+
+def _unpack_sample_for_view(packed: dict):
+    """
+    Reconstruct a tuple-like sample_data compatible with existing downstream code.
+    Large tensors are set to None; masks are decoded to numpy on demand.
+    """
+    image_path = packed.get("image_path", None)
+    masks_np = _unpack_masks_packbits(packed.get("masks_packbits", None))
+
+    return (
+        image_path,              # 0 image_path
+        None,                    # 1 images (big) - omitted
+        None,                    # 2 image_clip (big) - omitted
+        packed.get("conversations", None),  # 3 conversations
+        masks_np,                # 4 masks (decoded on demand)
+        None,                    # 5 label (big) - omitted
+        packed.get("resize", None),      # 6 resize
+        packed.get("clip_resize", None), # 7 clip_resize
+        packed.get("questions", None),   # 8 questions
+        packed.get("sampled_sents", None),  # 9 sampled_sents
+        packed.get("use_assign_list", None), # 10 use_assign_list
+        packed.get("inference", None),       # 11 inference
+    )
+
+def _conversation_contains_keyword(conversations, keyword: str) -> bool:
+    """
+    Exact string match (non-fuzzy): return True if `keyword` is contained in the
+    serialized conversation content.
+    """
+    if not keyword:
+        return False
+    if conversations is None:
+        return False
+    try:
+        if isinstance(conversations, (bytes, bytearray)):
+            text = conversations.decode("utf-8", errors="ignore")
+        elif isinstance(conversations, str):
+            text = conversations
+        else:
+            try:
+                text = json.dumps(conversations, ensure_ascii=False)
+            except Exception:
+                text = str(conversations)
+        return keyword in text
+    except Exception:
+        return False
+
 class WebDemoHandler:
     def __init__(self, args=None):
 
@@ -57,25 +215,22 @@ class WebDemoHandler:
             (128, 0, 128), (0, 128, 128), (255, 165, 0), (255, 20, 147), (0, 191, 255)
         ]
         
-        # Store current sample data for selective mask visualization
-        self.current_sample_data = None
+        # Store current image/masks for selective mask visualization
         self.current_image = None
         self.current_masks = None
         self.current_sampled_sents = None
         self.current_flattened_tags = None  # Flattened tags for selection
         
         # Store original gallery files for reference
-        self.original_binary_file = None
-        self.original_overlay_file = None
         self.original_image_file = None
-        
-        # self.dataset_mappings = {
-        #     'sem_seg': ['ade20k', 'cocostuff', 'pascal_part', 'paco_lvis', 'mapillary'],
-        #     'refer_seg': ['refclef', 'refcoco', 'refcoco+', 'refcocog','grefcoco', 'refzom'],
-        #     'vqa': ['llava_instruct_150k'],
-        #     'reason_seg': ['ReasonSeg|train'],
-        #     'multi_reason_seg': ['MultiReasonSeg|train']
-        # }
+        self.current_image_path = None
+
+        # If True, avoid re-rendering the original image through matplotlib and
+        # write derived visualizations using cv2.imwrite (keeps crispness).
+        self.use_raw_visualization = False
+
+    def set_raw_visualization(self, flag: bool):
+        self.use_raw_visualization = bool(flag)
         
     def cleanup_temp_files(self):
         for temp_file in self.temp_files:
@@ -242,13 +397,93 @@ class WebDemoHandler:
         if self.filename_list:
             self.current_filename = self.filename_list[0]
             self.current_filename_index = 0
+
+    def search_ids_by_conversation_keyword(self, keyword: str, limit: int = 5000):
+        """
+        Search samples by exact keyword match (substring) in `conversations`.
+        Returns a list of matched file_ids (same ids used by id-based search).
+        """
+        if self.HybridDataset is None:
+            return [], "Please load dataset first"
+        if not hasattr(self, "filename_to_sample_map") or not self.filename_to_sample_map:
+            return [], "❌ Filename mapping not built"
+
+        keyword = (keyword or "").strip()
+        if not keyword:
+            return [], "❌ Please enter a conversation keyword"
+
+        matched = []
+        try:
+            for file_id, packed in self.filename_to_sample_map.items():
+                conv = packed.get("conversations", None) if isinstance(packed, dict) else None
+                if _conversation_contains_keyword(conv, keyword):
+                    matched.append(file_id)
+                    if limit and len(matched) >= int(limit):
+                        break
+        except Exception as e:
+            return [], f"❌ Search failed: {e}"
+
+        return matched, f"✅ Found {len(matched)} matches for keyword: `{keyword}`"
+
+    def build_thumbnail_gallery_items(self, file_ids, show_n: Optional[int] = None, max_items: int = 200):
+        """Build (image_path, caption) items for gr.Gallery thumbnails."""
+        try:
+            if show_n is None:
+                n = int(max_items) if max_items is not None else 200
+            else:
+                n = int(show_n)
+        except Exception:
+            n = int(max_items) if max_items is not None else 200
+        n = max(0, min(n, int(max_items) if max_items is not None else n))
+
+        items = []
+        if not file_ids:
+            return items
+        if not hasattr(self, "filename_to_sample_map") or not self.filename_to_sample_map:
+            return items
+
+        for file_id in list(file_ids)[:n]:
+            packed = self.filename_to_sample_map.get(file_id, None)
+            if not packed or not isinstance(packed, dict):
+                continue
+            image_path = packed.get("image_path", None)
+            if not image_path:
+                continue
+            # gr.Gallery supports (image, caption)
+            items.append((image_path, str(file_id)))
+        return items
+
+    def build_thumbnail_gallery_items_and_ids(
+        self,
+        file_ids,
+        show_n: Optional[int] = None,
+        max_items: int = 200,
+    ):
+        """
+        Returns (items, shown_ids) where shown_ids aligns 1:1 with the gallery items
+        actually returned (after filtering invalid entries).
+        """
+        items = self.build_thumbnail_gallery_items(file_ids, show_n=show_n, max_items=max_items)
+        shown_ids = []
+        for it in items:
+            try:
+                # items are (image_path, caption_id)
+                if isinstance(it, (tuple, list)) and len(it) >= 2:
+                    shown_ids.append(str(it[1]))
+            except Exception:
+                continue
+        return items, shown_ids
     
     def get_sample_by_filename(self, filename):
         if filename not in self.filename_to_sample_map:
             return None, f"Sample not found: {filename}"
-        
-        complete_sample = self.filename_to_sample_map[filename]
-        return complete_sample['image_data'], None
+
+        packed = self.filename_to_sample_map[filename]
+        try:
+            sample_data = _unpack_sample_for_view(packed)
+            return sample_data, None
+        except Exception as e:
+            return None, f"Failed to unpack sample for {filename}: {e}"
     
     def get_random_sample(self):
         if not self.filename_list:
@@ -258,9 +493,8 @@ class WebDemoHandler:
         random_filename = random.choice(self.filename_list)
         self.current_filename = random_filename
         self.current_filename_index = self.filename_list.index(random_filename)
-        
-        complete_sample = self.filename_to_sample_map[random_filename]
-        return complete_sample['image_data'], random_filename
+        # Don't eagerly load sample_data here; visualization loads by filename.
+        return None, random_filename
     
     def get_next_sample(self):
         if not self.filename_list:
@@ -271,9 +505,8 @@ class WebDemoHandler:
         
         self.current_filename = next_filename
         self.current_filename_index = next_index
-        
-        complete_sample = self.filename_to_sample_map[next_filename]
-        return complete_sample['image_data'], next_filename
+        # Don't eagerly load sample_data here; visualization loads by filename.
+        return None, next_filename
     
     def get_prev_sample(self):
         if not self.filename_list:
@@ -284,9 +517,8 @@ class WebDemoHandler:
         
         self.current_filename = prev_filename
         self.current_filename_index = prev_index
-        
-        complete_sample = self.filename_to_sample_map[prev_filename]
-        return complete_sample['image_data'], prev_filename
+        # Don't eagerly load sample_data here; visualization loads by filename.
+        return None, prev_filename
     
     def get_file_name(self, image_path):
         file_name = os.path.basename(image_path)
@@ -295,7 +527,6 @@ class WebDemoHandler:
     def decode_masks_from_sample_data(self, sample_data):
         try:
             masks_tensor = sample_data[4]
-            print(sample_data[9])
             if hasattr(masks_tensor, 'numpy'):
                 masks_array = masks_tensor.numpy()
             elif hasattr(masks_tensor, 'cpu'):
@@ -342,6 +573,7 @@ class WebDemoHandler:
                 self.current_filename_index = self.filename_list.index(filename)
 
             image_path = sample_data[0]
+            self.current_image_path = image_path
             image = cv2.imread(image_path)
             if image is None:
                 self.processing_lock = False
@@ -351,7 +583,6 @@ class WebDemoHandler:
             masks = self.decode_masks_from_sample_data(sample_data)
             
             # Store current sample data for selective mask visualization
-            self.current_sample_data = sample_data
             self.current_image = image
             self.current_masks = masks
             self.current_sampled_sents = sample_data[9] if len(sample_data) > 9 else []
@@ -397,8 +628,6 @@ class WebDemoHandler:
             self.temp_files.append(temp_file_original.name)
             
             # Store original gallery files for selective mask visualization
-            self.original_binary_file = temp_file_binary.name
-            self.original_overlay_file = temp_file_overlay.name
             self.original_image_file = temp_file_original.name
 
             # Generate field content list
@@ -413,6 +642,83 @@ class WebDemoHandler:
             print(f"⚠️ Visualization error: {str(e)}")
             print(traceback.format_exc())
             plt.close('all')
+            self.cleanup_temp_files()
+            self.processing_lock = False
+            return None, f"❌ Visualization error: {str(e)}", ""
+
+    def visualize_sample_by_filename_raw(self, filename):
+        """
+        Raw visualization mode:
+        - binary/overlay are written with cv2.imwrite (no matplotlib savefig resampling)
+        - original image is the original file path (so download is the true original)
+        """
+        try:
+            if self.processing_lock:
+                return None, "⏳ Processing, please wait...", ""
+
+            self.processing_lock = True
+
+            if self.HybridDataset is None:
+                self.processing_lock = False
+                return None, "Please load dataset first", ""
+
+            self.cleanup_temp_files()
+
+            sample_data, error_msg = self.get_sample_by_filename(filename)
+            if error_msg:
+                self.processing_lock = False
+                return None, error_msg, ""
+
+            if filename in self.filename_list:
+                self.current_filename = filename
+                self.current_filename_index = self.filename_list.index(filename)
+
+            image_path = sample_data[0]
+            self.current_image_path = image_path
+            image_bgr = cv2.imread(image_path)
+            if image_bgr is None:
+                self.processing_lock = False
+                return None, f"❌ Cannot read image: {image_path}", ""
+            image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+
+            masks = self.decode_masks_from_sample_data(sample_data)
+
+            # Store current sample data for selective mask visualization
+            self.current_image = image
+            self.current_masks = masks
+            self.current_sampled_sents = sample_data[9] if len(sample_data) > 9 else []
+            self.current_flattened_tags, _ = self.flatten_sampled_sents(self.current_sampled_sents)
+
+            temp_files = []
+
+            # 1. Pure binary mask image
+            binary_mask_image = self.create_binary_mask_image(masks, image.shape[:2])
+            temp_file_binary = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            cv2.imwrite(temp_file_binary.name, binary_mask_image)
+            temp_files.append(temp_file_binary.name)
+            self.temp_files.append(temp_file_binary.name)
+
+            # 2. Mask overlay on original image
+            overlay_image = self.create_mask_overlay_image(image, masks).astype(np.uint8)
+            temp_file_overlay = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            cv2.imwrite(temp_file_overlay.name, cv2.cvtColor(overlay_image, cv2.COLOR_RGB2BGR))
+            temp_files.append(temp_file_overlay.name)
+            self.temp_files.append(temp_file_overlay.name)
+
+            # 3. Original image: keep original file path (no re-render)
+            temp_files.append(image_path)
+
+            # Store original gallery files for selective mask visualization
+            self.original_image_file = image_path
+
+            field_contents = self.generate_sample_details(sample_data)
+            filename_display = f"{filename} ({self.current_filename_index}/{len(self.filename_list)})"
+            self.processing_lock = False
+            return temp_files, field_contents, filename_display
+
+        except Exception as e:
+            print(f"⚠️ Visualization error (raw): {str(e)}")
+            print(traceback.format_exc())
             self.cleanup_temp_files()
             self.processing_lock = False
             return None, f"❌ Visualization error: {str(e)}", ""
@@ -461,8 +767,11 @@ class WebDemoHandler:
             if target_file_name not in self.filename_to_sample_map:
                 return None, f"❌ Sample with filename {target_file_name} not found", ""
             
-            # Use filename-based visualization method
-            result = self.visualize_sample_by_filename(target_file_name)
+            # Use filename-based visualization method (raw mode optional)
+            if getattr(self, "use_raw_visualization", False):
+                result = self.visualize_sample_by_filename_raw(target_file_name)
+            else:
+                result = self.visualize_sample_by_filename(target_file_name)
             if result[0] is None:
                 return None, result[1], ""
             
@@ -482,6 +791,8 @@ class WebDemoHandler:
             
             # Get next sample
             sample_data, next_filename = self.get_next_sample()
+            if getattr(self, "use_raw_visualization", False):
+                return self.visualize_sample_by_filename_raw(next_filename)
             # Use filename-based visualization method
             return self.visualize_sample_by_filename(next_filename)
             
@@ -499,7 +810,8 @@ class WebDemoHandler:
             
             # Get previous sample
             sample_data, prev_filename = self.get_prev_sample()
-            
+            if getattr(self, "use_raw_visualization", False):
+                return self.visualize_sample_by_filename_raw(prev_filename)
             # Use filename-based visualization method
             return self.visualize_sample_by_filename(prev_filename)
             
@@ -517,7 +829,8 @@ class WebDemoHandler:
             
             # Get random sample
             sample_data, random_filename = self.get_random_sample()
-            
+            if getattr(self, "use_raw_visualization", False):
+                return self.visualize_sample_by_filename_raw(random_filename)
             # Use filename-based visualization method
             return self.visualize_sample_by_filename(random_filename)
             
@@ -563,15 +876,46 @@ class WebDemoHandler:
             
             elif field_name in ['images', 'image_clip', 'masks', 'label']:
                 # For tensor types, display shape and dtype
+                if field_value is None:
+                    return "```\nNone\n```"
+
+                def _size(x):
+                    if hasattr(x, "numel"):
+                        try:
+                            return int(x.numel())
+                        except Exception:
+                            return None
+                    if hasattr(x, "size"):
+                        try:
+                            return int(x.size)
+                        except Exception:
+                            return None
+                    return None
+
+                def _minmax(x):
+                    n = _size(x)
+                    if n is None or n <= 0:
+                        return "N/A", "N/A"
+                    try:
+                        mn = x.min()
+                        mx = x.max()
+                        # torch scalar -> item(); numpy scalar -> float()
+                        mn_v = mn.item() if hasattr(mn, "item") else float(mn)
+                        mx_v = mx.item() if hasattr(mx, "item") else float(mx)
+                        return mn_v, mx_v
+                    except Exception:
+                        return "N/A", "N/A"
+
                 if hasattr(field_value, 'shape'):
                     if field_name == 'masks':
                         # Special handling for masks - add empty mask check
+                        mn_v, mx_v = _minmax(field_value)
                         content = f"""```
 Type: {type(field_value)}
 Shape: {field_value.shape if hasattr(field_value, 'shape') else 'N/A'}
 Dtype: {field_value.dtype if hasattr(field_value, 'dtype') else 'N/A'}
-Min: {field_value.min().item() if hasattr(field_value, 'min') and field_value.numel() > 0 else 'N/A'}
-Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.numel() > 0 else 'N/A'}
+Min: {mn_v}
+Max: {mx_v}
 
 === Mask Analysis ==="""
                         
@@ -608,12 +952,13 @@ Mask {i}: {'❌ EMPTY' if is_empty else '✅ Valid'}
                         content += "\n```"
                     else:
                         # Original handling for other tensor types
+                        mn_v, mx_v = _minmax(field_value)
                         content = f"""```
 Type: {type(field_value)}
 Shape: {field_value.shape if hasattr(field_value, 'shape') else 'N/A'}
 Dtype: {field_value.dtype if hasattr(field_value, 'dtype') else 'N/A'}
-Min: {field_value.min().item() if hasattr(field_value, 'min') and field_value.numel() > 0 else 'N/A'}
-Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.numel() > 0 else 'N/A'}
+Min: {mn_v}
+Max: {mx_v}
 ```"""
                 else:
                     # Full display without truncation
@@ -950,59 +1295,58 @@ Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.nu
         except Exception as e:
             print(f"⚠️ Error updating overlay: {e}")
             return []
-    
-    def get_labels_from_sampled_sents(self, sampled_sents):
+
+    def update_overlay_with_selected_tags_raw(self, selected_tags):
+        """Raw-mode overlay update: write images via cv2.imwrite to avoid matplotlib savefig."""
         try:
-            labels = []
-            if isinstance(sampled_sents, list):
-                for sent in sampled_sents:
-                    if isinstance(sent, str):
-                        # Truncate labels longer than 10 characters
-                        label = sent[:10] if len(sent) > 10 else sent
-                        labels.append(label)
-                    elif isinstance(sent, list):
-                        # If nested list, take first element
-                        for sub_sent in sent:
-                            if isinstance(sub_sent, str):
-                                label = sub_sent[:10] if len(sub_sent) > 10 else sub_sent
-                                labels.append(label)
-                                break
-            elif isinstance(sampled_sents, str):
-                label = sampled_sents[:10] if len(sampled_sents) > 10 else sampled_sents
-                labels.append(label)
-            
-            return labels
-            
-        except Exception as e:
-            print(f"Error extracting labels from sampled_sents: {e}")
+            if (self.current_image is None or self.current_masks is None or
+                self.current_sampled_sents is None or self.current_flattened_tags is None):
+                return []
+
+            _, tag_to_mask_index = self.flatten_sampled_sents(self.current_sampled_sents)
+
+            binary_mask_image = self.create_selective_binary_mask_image(
+                self.current_masks, self.current_image.shape[:2], selected_tags, tag_to_mask_index
+            )
+            overlay_image = self.create_selective_mask_overlay_image(
+                self.current_image, self.current_masks, selected_tags, tag_to_mask_index
+            ).astype(np.uint8)
+
+            temp_file_binary = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            cv2.imwrite(temp_file_binary.name, binary_mask_image)
+            self.temp_files.append(temp_file_binary.name)
+
+            temp_file_overlay = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            cv2.imwrite(temp_file_overlay.name, cv2.cvtColor(overlay_image, cv2.COLOR_RGB2BGR))
+            self.temp_files.append(temp_file_overlay.name)
+
+            original_path = self.current_image_path or self.original_image_file
+            if original_path:
+                return [temp_file_binary.name, temp_file_overlay.name, original_path]
             return []
+        except Exception as e:
+            print(f"⚠️ Error updating overlay (raw): {e}")
+            return []
+
+    def update_overlay_with_selected_tags_dispatch(self, selected_tags):
+        if getattr(self, "use_raw_visualization", False):
+            return self.update_overlay_with_selected_tags_raw(selected_tags)
+        return self.update_overlay_with_selected_tags(selected_tags)
 
     def _build_mappings_sequential(self):
         """Sequential processing for small datasets"""
         print("Using sequential processing...")
         self.filename_to_sample_map = OrderedDict()
-        
-        for img_idx in range(len(self.HybridDataset)):
+        target = len(self.HybridDataset)  # N samples per epoch
+        for i in range(target):
             try:
-                sample_data = self.HybridDataset[img_idx]
-                if sample_data is None or len(sample_data) == 0:
-                    continue
-                    
-                image_path = sample_data[0] if len(sample_data) > 0 else None
-                if image_path is None:
-                    continue
-                    
-                img_filename = self.get_file_name(image_path)
-                complete_sample = {
-                    'filename': img_filename,
-                    'image_data': sample_data,
-                    'image_index': img_idx
-                }
-                self.filename_to_sample_map[img_filename] = complete_sample
-                
+                # IMPORTANT: HybridDataset[i] is a random sample; we sample exactly N times here.
+                sample_data = self.HybridDataset[i]
+                file_id, packed = _pack_sample_for_mapping(sample_data)
+                if file_id and packed and file_id not in self.filename_to_sample_map:
+                    self.filename_to_sample_map[file_id] = packed
             except Exception as e:
-                print(f"Error processing sample {img_idx}: {e}")
-                continue
+                print(f"Error processing sample attempt {i}: {e}")
     
     def _build_mappings_threaded(self):
         """Multi-threaded processing for medium datasets"""
@@ -1014,17 +1358,10 @@ Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.nu
                 sample_data = self.HybridDataset[img_idx]
                 if sample_data is None or len(sample_data) == 0:
                     return None
-                    
-                image_path = sample_data[0] if len(sample_data) > 0 else None
-                if image_path is None:
+                file_id, packed = _pack_sample_for_mapping(sample_data)
+                if not file_id or not packed:
                     return None
-                    
-                img_filename = self.get_file_name(image_path)
-                return {
-                    'filename': img_filename,
-                    'image_data': sample_data,
-                    'image_index': img_idx
-                }
+                return (img_idx, file_id, packed)
             except Exception as e:
                 print(f"Error processing sample {img_idx}: {e}")
                 return None
@@ -1039,7 +1376,9 @@ Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.nu
             for future in as_completed(future_to_idx):
                 result = future.result()
                 if result is not None:
-                    self.filename_to_sample_map[result['filename']] = result
+                    _, file_id, packed = result
+                    if file_id not in self.filename_to_sample_map:
+                        self.filename_to_sample_map[file_id] = packed
                 
                 processed_count += 1
                 if processed_count % 10 == 0:
@@ -1050,7 +1389,8 @@ Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.nu
         print("Using DataLoader with multiprocessing...")
         self.filename_to_sample_map = OrderedDict()
         
-        # Create a wrapper dataset that returns the sample data and index
+        # Create a wrapper dataset that calls the dataset (random sampling),
+        # but returns ONLY packed, lightweight objects to avoid sending huge tensors across processes.
         class MappingDataset:
             def __init__(self, hybrid_dataset):
                 self.dataset = hybrid_dataset
@@ -1063,7 +1403,10 @@ Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.nu
                     sample_data = self.dataset[idx]
                     if sample_data is None or len(sample_data) == 0:
                         return None
-                    return (idx, sample_data)
+                    file_id, packed = _pack_sample_for_mapping(sample_data)
+                    if not file_id or not packed:
+                        return None
+                    return (idx, file_id, packed)
                 except Exception as e:
                     print(f"Error in dataset __getitem__ for index {idx}: {e}")
                     return None
@@ -1075,58 +1418,22 @@ Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.nu
             if not batch:
                 return [], []
             
-            # Extract data following the pattern from dataset.py
+            # Collate only indices + packed samples (small objects)
             indices = []
-            image_path_list = []
-            images_list = []
-            images_clip_list = []
-            conversation_list = []
-            masks_list = []
-            label_list = []
-            resize_list = []
-            clip_resize_list = []
-            questions_list = []
-            sampled_classes_list = []
-            use_assign_lists = []
-            inferences = []
+            ids = []
+            packed_list = []
             
-            for idx, sample_data in batch:
-                if sample_data is None or len(sample_data) < 12:
-                    continue
-                    
+            for idx, file_id, packed in batch:
                 indices.append(idx)
-                # Following HybridDataset structure: 
-                # [image_path, images, image_clip, conversations, masks, label, resize, clip_resize, questions, sampled_sents, use_assign_list, inference]
-                image_path_list.append(sample_data[0])  # image_path
-                images_list.append(sample_data[1])      # images
-                images_clip_list.append(sample_data[2]) # image_clip
-                conversation_list.append(sample_data[3]) # conversations
-                masks_list.append(sample_data[4])       # masks
-                label_list.append(sample_data[5])       # label
-                resize_list.append(sample_data[6])      # resize
-                clip_resize_list.append(sample_data[7]) # clip_resize
-                questions_list.append(sample_data[8])   # questions
-                sampled_classes_list.append(sample_data[9])  # sampled_sents
-                use_assign_lists.append(sample_data[10]) # use_assign_list
-                inferences.append(sample_data[11])      # inference
+                ids.append(file_id)
+                packed_list.append(packed)
             
             if not indices:
                 return [], []
             
-            # Return organized batch data similar to dataset.py collate_fn
             return indices, {
-                "image_paths": image_path_list,
-                "images": images_list,           # Keep as list, don't stack yet
-                "images_clip": images_clip_list, # Keep as list, don't stack yet  
-                "conversations": conversation_list,
-                "masks": masks_list,
-                "labels": label_list,
-                "resize_list": resize_list,
-                "clip_resize_list": clip_resize_list,
-                "questions": questions_list,
-                "sampled_classes": sampled_classes_list,
-                "use_assign_lists": use_assign_lists,
-                "inferences": inferences
+                "ids": ids,
+                "packed": packed_list,
             }
         
         # Create DataLoader similar to refer_seg_dataset.py
@@ -1149,41 +1456,19 @@ Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.nu
                 if not indices or not batch_data:
                     continue
                 
-                image_paths = batch_data["image_paths"]
+                ids = batch_data["ids"]
+                packed_list = batch_data["packed"]
                 
                 # Process each sample in the batch
-                for i, (idx, image_path) in enumerate(zip(indices, image_paths)):
+                for _, file_id, packed in zip(indices, ids, packed_list):
                     try:
-                        if image_path is None:
+                        if not file_id or not packed:
                             continue
-                            
-                        img_filename = self.get_file_name(image_path)
-                        
-                        # Reconstruct sample_data from batch_data
-                        sample_data = [
-                            batch_data["image_paths"][i],     # image_path
-                            batch_data["images"][i],          # images
-                            batch_data["images_clip"][i],     # image_clip
-                            batch_data["conversations"][i],   # conversations
-                            batch_data["masks"][i],           # masks
-                            batch_data["labels"][i],          # label
-                            batch_data["resize_list"][i],     # resize
-                            batch_data["clip_resize_list"][i], # clip_resize
-                            batch_data["questions"][i],       # questions
-                            batch_data["sampled_classes"][i], # sampled_sents
-                            batch_data["use_assign_lists"][i], # use_assign_list
-                            batch_data["inferences"][i]       # inference
-                        ]
-                        
-                        complete_sample = {
-                            'filename': img_filename,
-                            'image_data': sample_data,
-                            'image_index': idx
-                        }
-                        self.filename_to_sample_map[img_filename] = complete_sample
+                        if file_id not in self.filename_to_sample_map:
+                            self.filename_to_sample_map[file_id] = packed
                         
                     except Exception as e:
-                        print(f"Error processing sample {idx}: {e}")
+                        print(f"Error processing sample {file_id}: {e}")
                         continue
                     
                     processed_count += 1
@@ -1206,7 +1491,31 @@ Max: {field_value.max().item() if hasattr(field_value, 'max') and field_value.nu
 def create_web_demo(args=None):
     handler = WebDemoHandler(args)
     
-    def safe_next():
+    def _append_history(history_ids, new_id: str):
+        try:
+            history_ids = list(history_ids) if history_ids else []
+        except Exception:
+            history_ids = []
+        if not new_id:
+            return history_ids
+        new_id = str(new_id)
+        # avoid consecutive duplicates
+        if history_ids and history_ids[-1] == new_id:
+            return history_ids
+        history_ids.append(new_id)
+        return history_ids
+
+    def _render_history_gallery(history_ids):
+        # Render newest first for convenience
+        try:
+            ids = list(history_ids) if history_ids else []
+        except Exception:
+            ids = []
+        ids = list(reversed(ids))
+        items, shown_ids = handler.build_thumbnail_gallery_items_and_ids(ids, show_n=None, max_items=500)
+        return items, shown_ids
+
+    def safe_next(history_ids):
         try:
             result = handler.visualize_browse_next()
             if result and len(result) >= 3:
@@ -1221,17 +1530,22 @@ def create_web_demo(args=None):
                 if handler.current_flattened_tags:
                     tag_choices = handler.current_flattened_tags
                 tag_update = gr.update(choices=tag_choices, value=[])
-                
-                return accordion_result + [textbox_update, tag_update]
+
+                new_history = _append_history(history_ids, handler.current_filename)
+                hist_items, hist_shown = _render_history_gallery(new_history)
+                return accordion_result + [textbox_update, tag_update, new_history, hist_items, hist_shown]
             else:
                 empty_fields = [""] * 12
-                return [None] + empty_fields + [gr.update(), gr.update()]
+                # keep history unchanged
+                hist_items, hist_shown = _render_history_gallery(history_ids)
+                return [None] + empty_fields + [gr.update(), gr.update(), history_ids or [], hist_items, hist_shown]
         except Exception as e:
             print(f"Next event exception: {e}")
             empty_fields = [""] * 12
-            return [None] + empty_fields + [gr.update(), gr.update()]
+            hist_items, hist_shown = _render_history_gallery(history_ids)
+            return [None] + empty_fields + [gr.update(), gr.update(), history_ids or [], hist_items, hist_shown]
     
-    def safe_prev():
+    def safe_prev(history_ids):
         try:
             result = handler.visualize_browse_prev()
             if result and len(result) >= 3:
@@ -1247,16 +1561,20 @@ def create_web_demo(args=None):
                     tag_choices = handler.current_flattened_tags
                 tag_update = gr.update(choices=tag_choices, value=[])
                 
-                return accordion_result + [textbox_update, tag_update]
+                new_history = _append_history(history_ids, handler.current_filename)
+                hist_items, hist_shown = _render_history_gallery(new_history)
+                return accordion_result + [textbox_update, tag_update, new_history, hist_items, hist_shown]
             else:
                 empty_fields = [""] * 12
-                return [None] + empty_fields + [gr.update(), gr.update()]
+                hist_items, hist_shown = _render_history_gallery(history_ids)
+                return [None] + empty_fields + [gr.update(), gr.update(), history_ids or [], hist_items, hist_shown]
         except Exception as e:
             print(f"Prev event exception: {e}")
             empty_fields = [""] * 12
-            return [None] + empty_fields + [gr.update(), gr.update()]
+            hist_items, hist_shown = _render_history_gallery(history_ids)
+            return [None] + empty_fields + [gr.update(), gr.update(), history_ids or [], hist_items, hist_shown]
     
-    def safe_random():
+    def safe_random(history_ids):
         try:
             result = handler.visualize_browse_random()
             if result and len(result) >= 3:
@@ -1272,43 +1590,197 @@ def create_web_demo(args=None):
                     tag_choices = handler.current_flattened_tags
                 tag_update = gr.update(choices=tag_choices, value=[])
                 
-                return accordion_result + [textbox_update, tag_update]
+                new_history = _append_history(history_ids, handler.current_filename)
+                hist_items, hist_shown = _render_history_gallery(new_history)
+                return accordion_result + [textbox_update, tag_update, new_history, hist_items, hist_shown]
             else:
                 empty_fields = [""] * 12
-                return [None] + empty_fields + [gr.update(), gr.update()]
+                hist_items, hist_shown = _render_history_gallery(history_ids)
+                return [None] + empty_fields + [gr.update(), gr.update(), history_ids or [], hist_items, hist_shown]
         except Exception as e:
             print(f"Random event exception: {e}")
             empty_fields = [""] * 12
-            return [None] + empty_fields + [gr.update(), gr.update()]
+            hist_items, hist_shown = _render_history_gallery(history_ids)
+            return [None] + empty_fields + [gr.update(), gr.update(), history_ids or [], hist_items, hist_shown]
     
-    def safe_search(target_file_name):
+    def safe_search_smart(target_text, existing_conv_ids, history_ids):
         try:
-            result = handler.search_with_placeholder_update(target_file_name)
-            if result and len(result) >= 4:
-                gallery, sample_data, filename, placeholder_update = result[:4]
-                accordion_result = handler.safe_return_accordion_data(gallery, sample_data, filename)
-                current_index = handler.current_filename_index
-                total_samples = len(handler.filename_list)
-                textbox_update = gr.update(
-                    label=f"Go to File ({current_index}/{total_samples})", 
-                    value=handler.current_filename,
-                    placeholder=placeholder_update.get('placeholder', '') if placeholder_update else ''
-                )
-                
-                # Update tag choices based on current sample
-                tag_choices = []
-                if handler.current_flattened_tags:
-                    tag_choices = handler.current_flattened_tags
-                tag_update = gr.update(choices=tag_choices, value=[])
-                
-                return accordion_result + [textbox_update, tag_update]
-            else:
+            def _clear_current_view_state():
+                """Clear current sample cache so failed searches don't keep stale content."""
+                handler.current_filename = None
+                handler.current_image = None
+                handler.current_masks = None
+                handler.current_sampled_sents = None
+                handler.current_flattened_tags = None
+                handler.original_image_file = None
+                handler.current_image_path = None
+
+            # If dataset not ready, keep existing UI unchanged, but clear results.
+            if handler.HybridDataset is None:
+                _clear_current_view_state()
                 empty_fields = [""] * 12
-                return [None] + empty_fields + [gr.update(), gr.update()]
+                # keep existing results unchanged
+                conv_items, conv_shown = handler.build_thumbnail_gallery_items_and_ids(existing_conv_ids, show_n=None) if existing_conv_ids else ([], [])
+                hist_items, hist_shown = _render_history_gallery(history_ids)
+                return [[]] + empty_fields + [gr.update(), gr.update(choices=[], value=[])] + [existing_conv_ids or [], conv_items, conv_shown, history_ids or [], hist_items, hist_shown]
+            if not hasattr(handler, "filename_to_sample_map") or not handler.filename_to_sample_map:
+                _clear_current_view_state()
+                empty_fields = [""] * 12
+                conv_items, conv_shown = handler.build_thumbnail_gallery_items_and_ids(existing_conv_ids, show_n=None) if existing_conv_ids else ([], [])
+                hist_items, hist_shown = _render_history_gallery(history_ids)
+                return [[]] + empty_fields + [gr.update(), gr.update(choices=[], value=[])] + [existing_conv_ids or [], conv_items, conv_shown, history_ids or [], hist_items, hist_shown]
+
+            text = (target_text or "").strip()
+            # Decide id-search vs keyword-search
+            candidate_id = handler.get_file_name(text) if text else ""
+            if candidate_id and candidate_id in handler.filename_to_sample_map:
+                # Normal id jump (same behavior as before)
+                result = handler.search_with_placeholder_update(candidate_id)
+                if result and len(result) >= 4:
+                    gallery, sample_data, filename, placeholder_update = result[:4]
+                    accordion_result = handler.safe_return_accordion_data(gallery, sample_data, filename)
+                    current_index = handler.current_filename_index
+                    total_samples = len(handler.filename_list)
+                    textbox_update = gr.update(
+                        label=f"Go to File ({current_index}/{total_samples})",
+                        value=handler.current_filename,
+                        placeholder=placeholder_update.get('placeholder', '') if placeholder_update else ''
+                    )
+
+                    # Update tag choices based on current sample
+                    tag_choices = []
+                    if handler.current_flattened_tags:
+                        tag_choices = handler.current_flattened_tags
+                    tag_update = gr.update(choices=tag_choices, value=[])
+
+                    # Make id-search consistent with keyword-search: also show it in the thumbnail results gallery.
+                    new_history = _append_history(history_ids, handler.current_filename)
+                    new_conv_ids = [str(handler.current_filename or candidate_id)]
+                    conv_items, conv_shown = handler.build_thumbnail_gallery_items_and_ids(new_conv_ids, show_n=None, max_items=200)
+                    hist_items, hist_shown = _render_history_gallery(new_history)
+                    return accordion_result + [textbox_update, tag_update] + [new_conv_ids, conv_items, conv_shown, new_history, hist_items, hist_shown]
+
+                empty_fields = [""] * 12
+                _clear_current_view_state()
+                conv_items, conv_shown = handler.build_thumbnail_gallery_items_and_ids(existing_conv_ids, show_n=None) if existing_conv_ids else ([], [])
+                hist_items, hist_shown = _render_history_gallery(history_ids)
+                return [[]] + empty_fields + [gr.update(), gr.update(choices=[], value=[])] + [existing_conv_ids or [], conv_items, conv_shown, history_ids or [], hist_items, hist_shown]
+
+            if not text:
+                # Original behavior for empty search box: show first sample (and clear results)
+                result = handler.search_with_placeholder_update(text)
+                if result and len(result) >= 4:
+                    gallery, sample_data, filename, placeholder_update = result[:4]
+                    accordion_result = handler.safe_return_accordion_data(gallery, sample_data, filename)
+                    current_index = handler.current_filename_index
+                    total_samples = len(handler.filename_list)
+                    textbox_update = gr.update(
+                        label=f"Go to File ({current_index}/{total_samples})",
+                        value=handler.current_filename,
+                        placeholder=placeholder_update.get('placeholder', '') if placeholder_update else ''
+                    )
+                    tag_choices = handler.current_flattened_tags or []
+                    tag_update = gr.update(choices=tag_choices, value=[])
+                    new_history = _append_history(history_ids, handler.current_filename)
+                    conv_items, conv_shown = handler.build_thumbnail_gallery_items_and_ids(existing_conv_ids, show_n=None) if existing_conv_ids else ([], [])
+                    hist_items, hist_shown = _render_history_gallery(new_history)
+                    return accordion_result + [textbox_update, tag_update] + [existing_conv_ids or [], conv_items, conv_shown, new_history, hist_items, hist_shown]
+
+                empty_fields = [""] * 12
+                _clear_current_view_state()
+                conv_items, conv_shown = handler.build_thumbnail_gallery_items_and_ids(existing_conv_ids, show_n=None) if existing_conv_ids else ([], [])
+                hist_items, hist_shown = _render_history_gallery(history_ids)
+                return [[]] + empty_fields + [gr.update(), gr.update(choices=[], value=[])] + [existing_conv_ids or [], conv_items, conv_shown, history_ids or [], hist_items, hist_shown]
+
+            # Keyword search in conversations: keep current sample unchanged, show thumbnails
+            ids, _ = handler.search_ids_by_conversation_keyword(text)
+            items, shown_ids = handler.build_thumbnail_gallery_items_and_ids(ids, show_n=None, max_items=200)
+            if not ids:
+                # No results: clear main gallery + tags to avoid showing stale sample.
+                _clear_current_view_state()
+                empty_fields = [""] * 12
+                hist_items, hist_shown = _render_history_gallery(history_ids)
+                return [[]] + empty_fields + [gr.update(), gr.update(choices=[], value=[])] + [ids, items, shown_ids, history_ids or [], hist_items, hist_shown]
+            # Return "no change" for the existing outputs, but update conv outputs
+            no_change_fields = [gr.update()] * (1 + 12)  # gallery + 12 fields
+            hist_items, hist_shown = _render_history_gallery(history_ids)
+            return no_change_fields + [gr.update(), gr.update()] + [ids, items, shown_ids, history_ids or [], hist_items, hist_shown]
         except Exception as e:
             print(f"Search event exception: {e}")
+            _clear_current_view_state()
             empty_fields = [""] * 12
-            return [None] + empty_fields + [gr.update(), gr.update()]
+            conv_items, conv_shown = handler.build_thumbnail_gallery_items_and_ids(existing_conv_ids, show_n=None) if existing_conv_ids else ([], [])
+            hist_items, hist_shown = _render_history_gallery(history_ids)
+            return [[]] + empty_fields + [gr.update(), gr.update(choices=[], value=[])] + [existing_conv_ids or [], conv_items, conv_shown, history_ids or [], hist_items, hist_shown]
+
+    def safe_pick_conv_result(shown_ids, evt: gr.SelectData):
+        """Click thumbnail -> select id from shown_ids (aligned with the rendered gallery)."""
+        try:
+            if not shown_ids:
+                return "", gr.update()
+            idx = getattr(evt, "index", None)
+            if idx is None:
+                return "", gr.update()
+
+            # gr.Gallery SelectData.index can be int or (row, col)
+            if isinstance(idx, (tuple, list)):
+                # For our galleries we use rows=1, so prefer the column index if present.
+                if len(idx) >= 2 and idx[0] == 0:
+                    idx = idx[1]
+                elif len(idx) > 0:
+                    idx = idx[-1]
+            try:
+                idx = int(idx)
+            except Exception:
+                idx = None
+            if idx is None or idx < 0 or idx >= len(shown_ids):
+                return "", gr.update()
+
+            selected_id = shown_ids[idx]
+            # Also pre-fill the id search box (but do NOT auto-trigger search)
+            return str(selected_id), gr.update(value=str(selected_id))
+        except Exception as e:
+            print(f"Pick conv result exception: {e}")
+            return "", gr.update()
+
+    # NOTE: history uses the same picker, but its input is history_shown_ids_state (already aligned).
+
+    def safe_set_raw_and_refresh(flag, conv_ids, conv_shown_ids, history_ids, history_shown_ids):
+        """
+        Toggle raw visualization and refresh the currently displayed sample.
+        Does NOT touch keyword-search results or history (just re-renders).
+        """
+        try:
+            handler.set_raw_visualization(flag)
+            cur = handler.current_filename or ""
+            if cur and hasattr(handler, "filename_to_sample_map") and cur in handler.filename_to_sample_map:
+                if handler.use_raw_visualization:
+                    result = handler.visualize_sample_by_filename_raw(cur)
+                else:
+                    result = handler.visualize_sample_by_filename(cur)
+                if result and len(result) >= 3 and result[0] is not None:
+                    gallery, sample_data, filename = result[:3]
+                    accordion_result = handler.safe_return_accordion_data(gallery, sample_data, filename)
+                    current_index = handler.current_filename_index
+                    total_samples = len(handler.filename_list)
+                    textbox_update = gr.update(label=f"Go to File ({current_index}/{total_samples})", value=handler.current_filename)
+                    tag_choices = handler.current_flattened_tags or []
+                    tag_update = gr.update(choices=tag_choices, value=[])
+                    conv_items = handler.build_thumbnail_gallery_items(conv_ids, show_n=None) if conv_ids else []
+                    hist_items, _ = _render_history_gallery(history_ids)
+                    return accordion_result + [textbox_update, tag_update, conv_ids or [], conv_items, conv_shown_ids or [], history_ids or [], hist_items, history_shown_ids or []]
+        except Exception as e:
+            print(f"Raw refresh event exception: {e}")
+
+        # If no current sample, keep everything unchanged.
+        return [gr.update()] * (1 + 12) + [gr.update(), gr.update()] + [
+            conv_ids or [],
+            handler.build_thumbnail_gallery_items(conv_ids, show_n=None) if conv_ids else [],
+            conv_shown_ids or [],
+            history_ids or [],
+            _render_history_gallery(history_ids)[0],
+            history_shown_ids or [],
+        ]
     
 
     with gr.Blocks(
@@ -1346,6 +1818,50 @@ def create_web_demo(args=None):
         #sample_gallery .gallery img {
             max-width: 100% !important;
             max-height: 100% !important;
+            object-fit: contain !important;
+        }
+
+        /* Horizontal scroll for conversation search results gallery */
+        #conv_results_gallery {
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            white-space: nowrap !important;
+        }
+        #conv_results_gallery .gallery {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            gap: 8px !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            padding-bottom: 6px !important;
+        }
+        #conv_results_gallery .gallery-item {
+            flex: 0 0 auto !important;
+        }
+        #conv_results_gallery .gallery img {
+            max-height: 160px !important;
+            object-fit: contain !important;
+        }
+
+        /* Horizontal scroll for browsing history gallery */
+        #history_gallery {
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            white-space: nowrap !important;
+        }
+        #history_gallery .gallery {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            gap: 8px !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            padding-bottom: 6px !important;
+        }
+        #history_gallery .gallery-item {
+            flex: 0 0 auto !important;
+        }
+        #history_gallery .gallery img {
+            max-height: 120px !important;
             object-fit: contain !important;
         }
         
@@ -1455,7 +1971,7 @@ def create_web_demo(args=None):
                                     choices=["ReasonSeg|train", "ReasonSeg|val", "ReasonSeg|test"],
                                     label="reason_seg Datasets",
                                     multiselect=True,
-                                    value=[],
+                                    value=["ReasonSeg|train"],
                                     info="Reasoning segmentation datasets"
                                 )
                                 reason_seg_plus_dropdown = gr.Dropdown(
@@ -1478,6 +1994,7 @@ def create_web_demo(args=None):
                                 label="Sample Rates",
                                 info="sample rates for [sem_seg, refer_seg, vqa, reason_seg, multi_reason_seg]",
                                 placeholder="e.g., 1,1,1,1,1",
+                                value="1"
                             )
                             samples_per_epoch_input = gr.Textbox(
                                 label="Samples Per Epoch",
@@ -1508,6 +2025,27 @@ def create_web_demo(args=None):
                         with gr.Row():
                             prev_btn = gr.Button("⬅️ Prev", variant="secondary")
                             next_btn = gr.Button("➡️ Next", variant="secondary")
+                        # Results for conversation keyword search (triggered via the main Search button)
+                        conv_results_gallery = gr.Gallery(
+                            label="",
+                            show_label=True,
+                            columns=3,
+                            rows=1,
+                            object_fit="contain",
+                            height=250,
+                            allow_preview=True,
+                            preview=True,
+                            elem_id="conv_results_gallery",
+                        )
+                        conv_results_state = gr.State([])
+                        conv_results_shown_ids_state = gr.State([])
+                        # Hidden textbox used to trigger frontend clipboard copy via .change(_js=...)
+                        conv_selected_id = gr.Textbox(
+                            label="",
+                            value="",
+                            interactive=False,
+                            visible=False,
+                        )
                         
                     with gr.Column(scale=2):
 
@@ -1524,8 +2062,12 @@ def create_web_demo(args=None):
                         )
                         
                         # Tag selection interface for selective mask visualization
-                        with gr.Accordion("🏷️ Mask Tags Selection", open=True):
-                            gr.Markdown("**Select tags to display only corresponding masks. Leave empty to show all masks.**")
+                        raw_mode_checkbox = gr.Checkbox(
+                            label="full-resolution mode",
+                            value=False,
+                            interactive=True,
+                        )
+                        with gr.Accordion("🏷️ Select tags to display only corresponding masks. Leave empty to show all masks.", open=True):
                             tag_checkboxes = gr.CheckboxGroup(
                                 choices=[],
                                 value=[],
@@ -1574,6 +2116,21 @@ def create_web_demo(args=None):
                             
                             with gr.Accordion("inference", open=False):
                                 field_inference = gr.Markdown()
+
+                        with gr.Accordion("Browsing History", open=False):
+                            history_gallery = gr.Gallery(
+                                label="",
+                                show_label=True,
+                                columns=6,
+                                rows=1,
+                                object_fit="contain",
+                                height=300,
+                                allow_preview=True,
+                                preview=True,
+                                elem_id="history_gallery",
+                            )
+                            history_state = gr.State([])
+                            history_shown_ids_state = gr.State([])
                 
                 field_outputs = [
                     field_image_path, field_images, field_image_clip, field_conversations, 
@@ -1583,30 +2140,82 @@ def create_web_demo(args=None):
                 
                 next_btn.click(
                     safe_next,
-                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes]
+                    inputs=[history_state],
+                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes, history_state, history_gallery, history_shown_ids_state]
                 )
                 
                 prev_btn.click(
                     safe_prev,
-                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes]
+                    inputs=[history_state],
+                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes, history_state, history_gallery, history_shown_ids_state]
                 )
                 
                 random_jump_btn.click(
                     safe_random,
-                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes]
+                    inputs=[history_state],
+                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes, history_state, history_gallery, history_shown_ids_state]
                 )
                 
                 jump_to_file_btn.click(
-                    safe_search,
-                    inputs=jump_file_name_input,
-                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes]
+                    safe_search_smart,
+                    inputs=[jump_file_name_input, conv_results_state, history_state],
+                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes, conv_results_state, conv_results_gallery, conv_results_shown_ids_state, history_state, history_gallery, history_shown_ids_state]
+                )
+
+                conv_results_gallery.select(
+                    safe_pick_conv_result,
+                    inputs=[conv_results_shown_ids_state],
+                    outputs=[conv_selected_id, jump_file_name_input]
+                )
+
+                # Click history thumbnail -> copy id & fill search box (does not auto-jump)
+                history_gallery.select(
+                    safe_pick_conv_result,
+                    inputs=[history_shown_ids_state],
+                    outputs=[conv_selected_id, jump_file_name_input]
+                )
+
+                _copy_js = """
+                (id) => {
+                  try {
+                    if (!id) { return []; }
+                    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                      navigator.clipboard.writeText(id);
+                    } else {
+                      const ta = document.createElement('textarea');
+                      ta.value = id;
+                      ta.style.position = 'fixed';
+                      ta.style.left = '-9999px';
+                      document.body.appendChild(ta);
+                      ta.focus();
+                      ta.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(ta);
+                    }
+                  } catch (e) {}
+                  return [];
+                }
+                """
+
+                # Auto-copy whenever selected id changes (including updates from click)
+                conv_selected_id.change(
+                    fn=None,
+                    inputs=[conv_selected_id],
+                    outputs=[],
+                    _js=_copy_js,
                 )
                 
                 # Add tag selection change callback
                 tag_checkboxes.change(
-                    handler.update_overlay_with_selected_tags,
+                    handler.update_overlay_with_selected_tags_dispatch,
                     inputs=tag_checkboxes,
                     outputs=sample_gallery
+                )
+
+                raw_mode_checkbox.change(
+                    safe_set_raw_and_refresh,
+                    inputs=[raw_mode_checkbox, conv_results_state, conv_results_shown_ids_state, history_state, history_shown_ids_state],
+                    outputs=[sample_gallery] + field_outputs + [jump_file_name_input, tag_checkboxes, conv_results_state, conv_results_gallery, conv_results_shown_ids_state, history_state, history_gallery, history_shown_ids_state],
                 )
         
 
@@ -1736,9 +2345,9 @@ if __name__ == "__main__":
     parser.add_argument('--vqa_data', default='')
     parser.add_argument('--reason_seg_data', default='')
     parser.add_argument('--multi_reason_seg_data', default='')
-    parser.add_argument('--explanatory', type=float, default=-1)
-    parser.add_argument('--seg_token_num', type=int, default=3)
-    parser.add_argument('--image_feature_scale_num', type=int, default=2)
+    parser.add_argument('--explanatory', type=float, default=0.5)
+    parser.add_argument('--seg_token_num', type=int, default=1)
+    parser.add_argument('--image_feature_scale_num', type=int, default=1)
     parser.add_argument('--num_classes_per_question', type=int, default=3)
     parser.add_argument('--pad_train_clip_images', type=bool, default=False)
     parser.add_argument('--masks_process_with_clip', type=bool, default=False)
@@ -1754,8 +2363,8 @@ if __name__ == "__main__":
     s.close()
     demo.launch(
         server_name=ip_str,
-        server_port=7864,
-        share=False,
+        server_port=7863,
+        share=True,
         debug=False,
         show_error=True
     ) 

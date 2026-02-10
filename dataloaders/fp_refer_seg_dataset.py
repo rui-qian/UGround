@@ -108,10 +108,6 @@ class fpReferSegDataset(torch.utils.data.Dataset):
         self.refer_seg_ds_list = refer_seg_data.split("||")
         refer_seg_data = {}
         for ds in self.refer_seg_ds_list:
-            # Allow "dataset|split" (e.g., "refcoco|train"); default split is "train".
-            ds, _, split = ds.strip().partition("|")  # safer than split("|") if there are extra '|'
-            train_val_split = (split.strip() or "train")
-            
             split_by = self.determine_split_by(ds)
             refer_api = REFER(data_dir, ds, split_by)
             ref_ids_train = refer_api.getRefIds(split=train_val_split)
@@ -156,7 +152,6 @@ class fpReferSegDataset(torch.utils.data.Dataset):
     def select_dataset_and_image(self):
         """Selects a random dataset and an image from it."""
         ds = random.choice(self.refer_seg_ds_list)
-        ds, _, _ = ds.partition("|")  #
         refer_seg_ds = self.refer_seg_data[ds]
         images, annotations, img2refs = refer_seg_ds["images"], refer_seg_ds["annotations"], refer_seg_ds["img2refs"]
         idx = random.randint(0, len(images) - 1)
