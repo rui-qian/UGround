@@ -1653,12 +1653,12 @@ def create_web_demo(args=None):
                         tag_choices = handler.current_flattened_tags
                     tag_update = gr.update(choices=tag_choices, value=[])
 
-                    # Make id-search consistent with keyword-search: also show it in the thumbnail results gallery.
+                    # IMPORTANT: thumbnail results gallery should only show keyword-search results.
+                    # For id-jump, keep existing keyword results unchanged (do NOT overwrite).
                     new_history = _append_history(history_ids, handler.current_filename)
-                    new_conv_ids = [str(handler.current_filename or candidate_id)]
-                    conv_items, conv_shown = handler.build_thumbnail_gallery_items_and_ids(new_conv_ids, show_n=None, max_items=200)
+                    conv_items, conv_shown = handler.build_thumbnail_gallery_items_and_ids(existing_conv_ids, show_n=None, max_items=200) if existing_conv_ids else ([], [])
                     hist_items, hist_shown = _render_history_gallery(new_history)
-                    return accordion_result + [textbox_update, tag_update] + [new_conv_ids, conv_items, conv_shown, new_history, hist_items, hist_shown]
+                    return accordion_result + [textbox_update, tag_update] + [existing_conv_ids or [], conv_items, conv_shown, new_history, hist_items, hist_shown]
 
                 empty_fields = [""] * 12
                 _clear_current_view_state()
@@ -1971,7 +1971,7 @@ def create_web_demo(args=None):
                                     choices=["ReasonSeg|train", "ReasonSeg|val", "ReasonSeg|test"],
                                     label="reason_seg Datasets",
                                     multiselect=True,
-                                    value=["ReasonSeg|train"],
+                                    value=[],
                                     info="Reasoning segmentation datasets"
                                 )
                                 reason_seg_plus_dropdown = gr.Dropdown(
