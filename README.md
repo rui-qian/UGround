@@ -2,7 +2,7 @@
   <img src="assets/ulogo.png" alt="logo" width="80" />
 </p>
 
-# UGround: Towards Unified Visual Grounding with Unrolled Transformers
+# UGround: Towards Unified Visual Grounding with Unrolled Transformers (ICML 2026)
 
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)  [![arXiv](https://img.shields.io/badge/arXiv-2510.03853-red)](http://arxiv.org/abs/2510.03853) 
 
@@ -34,6 +34,7 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 <p align="center"> <img src="assets/introduction.png" width="100%"> </p>
 
 ## News
+- [x] [2026.5.1] UGround has been accepted to ICML 2026🎉🎉🎉! 
 - [x] [2025.10.4] UGround code and [UGround-LLaVA-v1.5-7B/13B](https://huggingface.co/rui-qian/) models are released. Welcome to check them out!
 - [x] [2025.10.3] [Paper](http://arxiv.org/abs/2510.03853) is released and GitHub repo is created.
 
@@ -203,4 +204,4 @@ If you use our work or our implementation in this repo, or find them helpful, pl
 }
 ```
 ## Contact
-If you have any questions, feel free to reach out at qiianruii@gmail.com, xyin@zju.edu.cn, dengch2000@gmail.com, pzy2000@sjtu.edu.cn, jianxxiong@gmail.com, zhaiwei682@gmail.com and dejingdou@gmail.com.
+If you have any questions, feel free to reach out at qiianruii@gmail.com, xyin@zju.edu.cn, dengch2000@gmail.com, pzy2000@sjtu.edu.cn, and dejingdou@gmail.com.
