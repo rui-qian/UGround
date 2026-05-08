@@ -38,6 +38,25 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 - [x] [2025.10.4] UGround code and [UGround-LLaVA-v1.5-7B/13B](https://huggingface.co/rui-qian/) models are released. Welcome to check them out!
 - [x] [2025.10.3] [Paper](http://arxiv.org/abs/2510.03853) is released and GitHub repo is created.
 
+## 🔥 Visual Grounding Family
+
+<details open><summary>Language to Grounding in vision and Beyond: </summary><p>
+
+
+> [**UGround: Towards Unified Visual Grounding with Unrolled Transformers (ICML 2026)**](http://arxiv.org/abs/2510.03853) <br>
+> **Authors:** Qian, Rui and Yin, Xin and Deng, Chuanhang and Peng, Zhiyuan and Xiong, Jian and Zhai, Wei and Dou, Dejing <br>
+[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/UGround) [![github](https://img.shields.io/github/stars/rui-qian/UGround.svg?style=social)](https://github.com/rui-qian/UGround) [![arXiv](https://img.shields.io/badge/Arxiv-2510.21618-b31b1b.svg?logo=arXiv)](http://arxiv.org/abs/2510.03853) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/rui-qian)
+
+
+ > [**AnchorSeg: Language Grounded Query Banks for Reasoning Segmentation (ACL 2026)**](https://arxiv.org/abs/2604.18562) <br>
+> **Authors:** Qian, Rui and Deng, Chuanhang and Huang, Qiang and Xiong, Jian and Li, Mingxuan and Zhou, Yingbo and Zhai, Wei and Chen, Jintao and Dou, Dejing <br>
+[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/AnchorSeg) [![github](https://img.shields.io/github/stars/rui-qian/AnchorSeg.svg?style=social)](https://github.com/rui-qian/AnchorSeg) [![arXiv](https://img.shields.io/badge/Arxiv-2504.21776-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2604.18562) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/rui-qian)
+
+> [**Reasoning to Attend: Try to Understand How <SEG> Token Works (CVPR 2025)**](https://arxiv.org/abs/2412.17741) <br>
+> **Authors:** Qian, Rui and Yin, Xin and Dou, Dejing <br>
+[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/READ) [![github](https://img.shields.io/github/stars/rui-qian/READ.svg?style=social)](https://github.com/rui-qian/READ) [![arXiv](https://img.shields.io/badge/Arxiv-2501.16399-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2412.17741) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/papers/2412.17741) [![Project Page](https://img.shields.io/badge/Project-Page-green)](https://github.com/rui-qian/READ)
+</p></details>
+
 ### Currently Supported Features
 
 - [x] Support framework decoupling (框架分离: LISA, PixelLM, GSVA, READ, SESAME)
@@ -203,7 +222,7 @@ If you use our work or our implementation in this repo, or find them helpful, pl
   year={2026}
 }
 @inproceedings{qian2025reasoning,
-  title={Reasoning to Attend: Try to Understand How< SEG> Token Works},
+  title={Reasoning to Attend: Try to Understand How <SEG> Token Works},
   author={Qian, Rui and Yin, Xin and Dou, Dejing},
   booktitle={Proceedings of the Computer Vision and Pattern Recognition Conference},
   year={2025}
