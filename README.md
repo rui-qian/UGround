@@ -45,16 +45,16 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 
 > [**UGround: Towards Unified Visual Grounding with Unrolled Transformers (ICML 2026)**](http://arxiv.org/abs/2510.03853) <br>
 > **Authors:** Rui Qian, Xin Yin, Chuanhang Deng, Zhiyuan Peng, Jian Xiong, Wei Zhai, Dejing Dou <br>
-[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/UGround) [![github](https://img.shields.io/github/stars/rui-qian/UGround.svg?style=social)](https://github.com/rui-qian/UGround) [![arXiv](https://img.shields.io/badge/Arxiv-2510.21618-b31b1b.svg?logo=arXiv)](http://arxiv.org/abs/2510.03853) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/rui-qian)
+[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/UGround) [![github](https://img.shields.io/github/stars/rui-qian/UGround.svg?style=social)](https://github.com/rui-qian/UGround) [![arXiv](https://img.shields.io/badge/Arxiv-2510.03853-b31b1b.svg?logo=arXiv)](http://arxiv.org/abs/2510.03853) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/rui-qian)
 
 
  > [**AnchorSeg: Language Grounded Query Banks for Reasoning Segmentation (ACL 2026)**](https://arxiv.org/abs/2604.18562) <br>
 > **Authors:** Rui Qian, Chuanhang Deng, Qiang Huang, Jian Xiong, Mingxuan Li, Yingbo Zhou, Wei Zhai, Jintao Chen, Dejing Dou <br>
-[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/AnchorSeg) [![github](https://img.shields.io/github/stars/rui-qian/AnchorSeg.svg?style=social)](https://github.com/rui-qian/AnchorSeg) [![arXiv](https://img.shields.io/badge/Arxiv-2504.21776-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2604.18562) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/rui-qian)
+[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/AnchorSeg) [![github](https://img.shields.io/github/stars/rui-qian/AnchorSeg.svg?style=social)](https://github.com/rui-qian/AnchorSeg) [![arXiv](https://img.shields.io/badge/Arxiv-2604.18562-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2604.18562) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/rui-qian)
 
 > [**Reasoning to Attend: Try to Understand How <SEG> Token Works (CVPR 2025)**](https://arxiv.org/abs/2412.17741) <br>
 > **Authors:** Rui Qian, Xin Yin, Dejing Dou <br>
-[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/READ) [![github](https://img.shields.io/github/stars/rui-qian/READ.svg?style=social)](https://github.com/rui-qian/READ) [![arXiv](https://img.shields.io/badge/Arxiv-2501.16399-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2412.17741) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/papers/2412.17741) [![Project Page](https://img.shields.io/badge/Project-Page-green)](https://github.com/rui-qian/READ)
+[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/READ) [![github](https://img.shields.io/github/stars/rui-qian/READ.svg?style=social)](https://github.com/rui-qian/READ) [![arXiv](https://img.shields.io/badge/Arxiv-2412.17741-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2412.17741) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/papers/2412.17741) [![Project Page](https://img.shields.io/badge/Project-Page-green)](https://github.com/rui-qian/READ)
 </p></details>
 
 ### Currently Supported Features
