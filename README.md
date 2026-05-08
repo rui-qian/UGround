@@ -193,7 +193,7 @@ If you use our work or our implementation in this repo, or find them helpful, pl
 @inproceedings{qian2025UGround,
   title={UGround: Towards Unified Visual Grounding with Unrolled Transformers},
   author={Qian, Rui and Yin, Xin and Deng, Chuanhang and Peng, Zhiyuan and Xiong, Jian and Zhai, Wei and Dou, Dejing},
-  booktitle={arXiv},
+  booktitle={International Conference on Machine Learning},
   year={2025}
 }
 @inproceedings{qian2025reasoning,
