@@ -194,12 +194,18 @@ If you use our work or our implementation in this repo, or find them helpful, pl
   title={UGround: Towards Unified Visual Grounding with Unrolled Transformers},
   author={Qian, Rui and Yin, Xin and Deng, Chuanhang and Peng, Zhiyuan and Xiong, Jian and Zhai, Wei and Dou, Dejing},
   booktitle={International Conference on Machine Learning},
-  year={2025}
+  year={2026}
+}
+@inproceedings{qian2025UGround,
+  title={AnchorSeg: Language Grounded Query Banks for Reasoning Segmentation},
+  author={Qian, Rui and Deng, Chuanhang and Huang, Qiang and Xiong, Jian and Li, Mingxuan and Zhou, Yingbo and Zhai, Wei and Chen, Jintao and Dou, Dejing},
+  booktitle={Annual Meeting of the Association for Computational Linguistics},
+  year={2026}
 }
 @inproceedings{qian2025reasoning,
   title={Reasoning to Attend: Try to Understand How< SEG> Token Works},
   author={Qian, Rui and Yin, Xin and Dou, Dejing},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  booktitle={Proceedings of the Computer Vision and Pattern Recognition Conference},
   year={2025}
 }
 ```
