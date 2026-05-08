@@ -190,13 +190,13 @@ We are grateful for the foundational code provided by [PixelLM](https://github.c
 
 If you use our work or our implementation in this repo, or find them helpful, please consider giving a citation.
 ```
-@inproceedings{qian2025UGround,
+@inproceedings{qian2026UGround,
   title={UGround: Towards Unified Visual Grounding with Unrolled Transformers},
   author={Qian, Rui and Yin, Xin and Deng, Chuanhang and Peng, Zhiyuan and Xiong, Jian and Zhai, Wei and Dou, Dejing},
   booktitle={International Conference on Machine Learning},
   year={2026}
 }
-@inproceedings{qian2025UGround,
+@inproceedings{qian2026AnchorSeg,
   title={AnchorSeg: Language Grounded Query Banks for Reasoning Segmentation},
   author={Qian, Rui and Deng, Chuanhang and Huang, Qiang and Xiong, Jian and Li, Mingxuan and Zhou, Yingbo and Zhai, Wei and Chen, Jintao and Dou, Dejing},
   booktitle={Annual Meeting of the Association for Computational Linguistics},
