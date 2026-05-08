@@ -54,7 +54,7 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 
 > [**Reasoning to Attend: Try to Understand How <SEG> Token Works (CVPR 2025)**](https://arxiv.org/abs/2412.17741) <br>
 > **Authors:** Rui Qian, Xin Yin, Dejing Dou <br>
-[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/READ) [![github](https://img.shields.io/github/stars/rui-qian/READ.svg?style=social)](https://github.com/rui-qian/READ) [![arXiv](https://img.shields.io/badge/Arxiv-2412.17741-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2412.17741) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/papers/2412.17741) [![Project Page](https://img.shields.io/badge/Project-Page-green)](https://github.com/rui-qian/READ)
+[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/READ) [![github](https://img.shields.io/github/stars/rui-qian/READ.svg?style=social)](https://github.com/rui-qian/READ) [![arXiv](https://img.shields.io/badge/Arxiv-2412.17741-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2412.17741) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/papers/2412.17741) [![Project Page](https://img.shields.io/badge/Project-Page-green)](https://cvpr.thecvf.com/media/PosterPDFs/CVPR%202025/32873.png?t=1746173344.9632757)
 </p></details>
 
 ### Currently Supported Features
