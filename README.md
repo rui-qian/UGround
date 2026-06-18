@@ -45,7 +45,7 @@ All codes and models are publicly available at https://github.com/rui-qian/UGrou
 
 > [**UGround: Towards Unified Visual Grounding with Unrolled Transformers (ICML 2026)**](http://arxiv.org/abs/2510.03853) <br>
 > **Authors:** Rui Qian, Xin Yin, Chuanhang Deng, Zhiyuan Peng, Jian Xiong, Wei Zhai, Dejing Dou <br>
-[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/UGround) [![github](https://img.shields.io/github/stars/rui-qian/UGround.svg?style=social)](https://github.com/rui-qian/UGround) [![arXiv](https://img.shields.io/badge/Arxiv-2510.03853-b31b1b.svg?logo=arXiv)](http://arxiv.org/abs/2510.03853) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/rui-qian)
+[![github](https://img.shields.io/badge/-Github-black?logo=github)](https://github.com/rui-qian/UGround) [![github](https://img.shields.io/github/stars/rui-qian/UGround.svg?style=social)](https://github.com/rui-qian/UGround) [![arXiv](https://img.shields.io/badge/Arxiv-2510.03853-b31b1b.svg?logo=arXiv)](http://arxiv.org/abs/2510.03853) [![Paper](https://img.shields.io/badge/Hugging%20Face-Paper-yellow?logo=huggingface)](https://huggingface.co/rui-qian)[![ICML Poster](https://img.shields.io/badge/ICML-Poster-green)](https://icml.cc/media/PosterPDFs/ICML%202026/65753.png?t=1781773589.6352596)
 
 
  > [**AnchorSeg: Language Grounded Query Banks for Reasoning Segmentation (ACL 2026)**](https://arxiv.org/abs/2604.18562) <br>
